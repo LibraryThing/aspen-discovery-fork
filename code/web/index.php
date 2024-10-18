@@ -762,6 +762,10 @@ if ($action == "AJAX" || $action == "JSON" || $module == 'API') {
 		$interface->assign('enableOpenArchives', true);
 	}
 
+	if ($library->enableTalpaSearch) {
+		$interface->assign('enableTalpaSearch', true);
+	}
+
 	if (!($module == 'Search' && $action == 'Home')) {
 		/** @var SearchObject_BaseSearcher $activeSearch */
 		$activeSearch = $activeSearchObject->loadLastSearch();

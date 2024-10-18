@@ -96,6 +96,7 @@ class SearchSources {
 		$searchEbscohost = array_key_exists('EBSCOhost', $enabledModules) && $library->ebscohostSearchSettingId != -1;
 		$searchSummon = array_key_exists('Summon', $enabledModules) && $library->summonSettingsId != -1;
 		$searchOpenArchives = array_key_exists('Open Archives', $enabledModules) && $library->enableOpenArchives == 1;
+		$searchTalpa = array_key_exists('Talpa Search', $enabledModules) && $library->enableTalpaSearch == 1; //TODO LAUREN
 		$searchCourseReserves = $library->enableCourseReserves == 2;
 		$searchSeries = $library->useSeriesSearchIndex == 1;
 
@@ -307,6 +308,14 @@ class SearchSources {
 				'name' => 'Genealogy Records',
 				'description' => 'Genealogy Records',
 				'catalogType' => 'genealogy',
+				'hasAdvancedSearch' => false,
+			];
+		}
+		if ($searchTalpa) {
+			$searchOptions['talpa'] = [
+				'name' => 'Talpa Search',
+				'description' => 'Talpa Search',
+				'catalogType' => 'talpa',
 				'hasAdvancedSearch' => false,
 			];
 		}
