@@ -71,6 +71,9 @@ class SearchObjectFactory {
 			case 'summon' :
 				$engine = 'Summon';
 				break;
+			case 'talpa' :
+				$engine = 'Talpa';
+				break;
 			case 'series' :
 				$engine = 'Series';
 				break;

@@ -439,7 +439,7 @@ class Library extends DataObject {
 	//cookieConsent
 	public $cookieStorageConsent;
 	public $cookiePolicyHTML;
-	
+
 	// ILS privacy consent
 	public $ilsConsentEnabled;
 
@@ -452,6 +452,11 @@ class Library extends DataObject {
 
 	// LIBKEY
 	public $libKeySettingId;
+
+	// Talpa /
+	public $enableTalpaSearch;
+	public $talpaSettingsId;
+
 
 	public $allowUpdatingHolidaysFromILS;
 
@@ -808,6 +813,16 @@ class Library extends DataObject {
 		$summonSettings[-1] = 'none';
 		while ($summonSetting->fetch()) {
 			$summonSettings[$summonSetting->id] = $summonSetting->name;
+		}
+
+		require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
+		$talpaSetting = new TalpaSettings();
+		$talpaSetting->orderBy('name');
+		$talpaSettings = [];
+		$talpaSetting->find();
+		$talpaSettings[-1] = 'none';
+		while ($talpaSetting->fetch()) {
+			$talpaSettings[$talpaSetting->id] = $talpaSetting->name;
 		}
 
 
@@ -3836,7 +3851,33 @@ class Library extends DataObject {
 					],
 				],
 			],
-
+			'talpaSearchSection' => [
+				'property' => 'talpaSearchSection',
+				'type' => 'section',
+				'label' => 'Talpa Search',
+				'hideInLists' => true,
+				'renderAsHeading' => true,
+//				'permissions' => ['Library Web Builder Options'],
+				'properties' => [
+					'enableTalpaSearch' => [
+						'property' => 'enableTalpaSearch',
+						'type' => 'checkbox',
+						'label' => 'Enable Talpa as a search mode. ',
+						'description' => 'Talpa is a magical, natural-language search tool. Patrons can use this to find materials, but also to ask open-ended questions, like "Mystery book with a red cover?".',
+						'hideInLists' => true,
+						'default' => 0,
+					],
+					'talpaSettingsId' => [
+						'property' => 'talpaSettingsId',
+						'type' => 'enum',
+						'values' => $talpaSettings,
+						'label' => 'talpa Settings',
+						'description' => 'Whether or not talpa content should be included for this library.',
+						'hideInLists' => true,
+						'default' => -1,
+					],
+				],
+			],
 			'oaiSection' => [
 				'property' => 'oaiSection',
 				'type' => 'section',
@@ -4204,6 +4245,9 @@ class Library extends DataObject {
 		}
 		if (!$catalog || !$catalog->hasIlsConsentSupport()) {
 			unset($structure['dataProtectionRegulations']['properties']['ilsConsentEnabled']);
+		}
+		if (!array_key_exists('Talpa Search', $enabledModules)) {
+			unset($structure['talpaSearchSection']);
 		}
 
 		return $structure;

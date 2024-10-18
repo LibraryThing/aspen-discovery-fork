@@ -6808,6 +6808,12 @@ CREATE TABLE `xpresspay_settings` (
   `paymentTypeCode` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;DROP TABLE IF EXISTS talpa_settings;
+CREATE TABLE `talpa_settings` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL,
+  `talpaApiToken` varchar(50) DEFAULT '',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 INSERT INTO account_profiles (id, name, driver, loginConfiguration, authenticationMethod, vendorOpacUrl, patronApiUrl, recordSource, weight, ils) VALUES (1,'admin','Library','barcode_pin','db','defaultURL','defaultURL','admin',1,'library');
 INSERT INTO browse_category (id, textId, userId, sharing, label, description, defaultFilter, defaultSort, searchTerm, numTimesShown, numTitlesClickedOn, sourceListId, source, libraryId, startDate, endDate) VALUES (1,'main_new_fiction',2,'everyone','New Fiction','','literary_form:Fiction','newest_to_oldest','',2,0,-1,'GroupedWork',-1,0,0),(2,'main_new_non_fiction',1,'everyone','New Non Fiction','','literary_form:Non Fiction','newest_to_oldest','',0,0,-1,'GroupedWork',-1,0,0);
