@@ -103,6 +103,31 @@ class TalpaRecordDriver extends RecordInterface {
 //print_r($this->record['rank']);
 //print_r($this->record['rank']);
 //print_r($this->record['rank']);
+		require_once ROOT_DIR . '/sys/SearchObject/GroupedWorkSearcher2.php';
+		require_once ROOT_DIR . '/sys/SolrConnector/GroupedWorksSolrConnector.php';
+
+		global $configArray;
+		$url = $configArray['Index']['url'];
+
+
+		$isbns = ($this -> record['isbns']);
+		$isbns = $isbns[0];
+
+
+		/** @var SearchObject_AbstractGroupedWorkSearcher $_searchObject */
+		$_searchObject = SearchObjectFactory::initSearchObject();
+		$_searchObject->clearFacets();
+		$_searchObject->disableSpelling();
+		$_searchObject->disableLogging();
+		$_searchObject->setLimit(1);
+		$_searchObject->setBasicQuery($isbns, "isbn");
+print_r($_searchObject -> getSearchSource());
+exit;
+		$response = $_searchObject->processSearch(true, false, false);
+
+
+exit;
+
 
 //		$id = $this->getUniqueID();
 //		$formats = $this->getFormats();

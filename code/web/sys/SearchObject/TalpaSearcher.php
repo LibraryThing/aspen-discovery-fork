@@ -8,7 +8,8 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 	static $instance;
 	/** @var TalpaSettings */
-	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
+//	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
+	private $talpaBaseApi ='https://lp.dev.librarything.com/api/talpa.php';
 
 	/**Build URL */
 //	private $sessionId;
@@ -69,8 +70,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 	/**
 	 * @var int
+	 * Number of results to return from Talpa
 	 */
-	protected $limit= 20;
+	protected $limit= 100;
 	/**
 	 * @var int
 	 */
@@ -209,7 +211,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$headers = array(
 			'Accept' => 'application/'.$this->responseType,
 			'x-talpa-date' => date('D, d M Y H:i:s T'),
-			'Host' => 'www.librarything.com'
+//			'Host' => 'www.librarything.com'
 		);
 		return $headers;
 	}
@@ -232,57 +234,57 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		);
 	}
 
-	//Build an array of options that will be passed into the final query string that will be sent to the Talpa API
-	public function getOptions () {
-		//Search terms in an array with the index of your search and your search terms. We must add the index to the query and then add the 'look for' terms.
-		$searchQuery = $this->searchTerms[0]['index'].':('.implode('&', array_slice($this->searchTerms[0],1)).')';
-		$options = array(
-			's.q' => $searchQuery,
-			//Results per page
-			's.ps' => $this->limit,
-			//Page number
-			's.pn' => $this->page,
-			//In library collection - can be implemented for libraries as required
-			's.ho' => $this->holdings ? 'true' : 'false',
-			//Query suggestions - can be implemented for libraries as required
-			's.dym' => $this->didYouMean ? 'true' : 'false',
-			//Default English
-			's.l' => $this->language,
-			//Fetch specific records
-			's.fids' =>$this->idsToFetch,
-			//Side facets to filter by
-			's.ff' =>array_merge($this->facets, $this->limits),
-			//Filters that are active - from side facets
-			's.fvf' => $this->getTalpaFilters(),
-			//Default 1
-			's.rec.topic.max' => $this->maxTopics,
-			//Filters
-			's.fvgf' => $this->groupFilters,
-			//Range Facets
-			's.rff' => $this->rangeFacets,
-			//Filters
-			's.rf' => $this->rangeFilters,
-			//Order results
-			's.sort' => $this->getSort(),
-			//False by default
-			's.exp' => $this->expand ? 'true' : 'false',
-			//False by default
-			's.oaf' => $this->openAccessFilter ? 'true' : 'false',
-			//To bookmark an item so you can retreive it later
-			's.bookMark' => $this->bookMark,
-			//False by default
-			's.debug' => $this->debug ? 'true' : 'false',
-			//False by default - recommend journals
-			's.rec.jt' => $this->journalTitle ? 'true' : 'false',
-			//False by default
-			's.light' => $this->lightWeightRes ? 'true' : 'false',
-			//2 by default - max database reccomendations
-			's.rec.db.max' => $this->maxRecDb,
-			//allows access to records
-			's.role' =>  'authenticated',			
-		);
-		return $options;
-	}
+//	//Build an array of options that will be passed into the final query string that will be sent to the Talpa API
+//	public function getOptions () {
+//		//Search terms in an array with the index of your search and your search terms. We must add the index to the query and then add the 'look for' terms.
+//		$searchQuery = $this->searchTerms[0]['index'].':('.implode('&', array_slice($this->searchTerms[0],1)).')';
+//		$options = array(
+//			's.q' => $searchQuery,
+//			//Results per page
+//			's.ps' => $this->limit,
+//			//Page number
+//			's.pn' => $this->page,
+//			//In library collection - can be implemented for libraries as required
+//			's.ho' => $this->holdings ? 'true' : 'false',
+//			//Query suggestions - can be implemented for libraries as required
+//			's.dym' => $this->didYouMean ? 'true' : 'false',
+//			//Default English
+//			's.l' => $this->language,
+//			//Fetch specific records
+//			's.fids' =>$this->idsToFetch,
+//			//Side facets to filter by
+//			's.ff' =>array_merge($this->facets, $this->limits),
+//			//Filters that are active - from side facets
+//			's.fvf' => $this->getTalpaFilters(),
+//			//Default 1
+//			's.rec.topic.max' => $this->maxTopics,
+//			//Filters
+//			's.fvgf' => $this->groupFilters,
+//			//Range Facets
+//			's.rff' => $this->rangeFacets,
+//			//Filters
+//			's.rf' => $this->rangeFilters,
+//			//Order results
+//			's.sort' => $this->getSort(),
+//			//False by default
+//			's.exp' => $this->expand ? 'true' : 'false',
+//			//False by default
+//			's.oaf' => $this->openAccessFilter ? 'true' : 'false',
+//			//To bookmark an item so you can retreive it later
+//			's.bookMark' => $this->bookMark,
+//			//False by default
+//			's.debug' => $this->debug ? 'true' : 'false',
+//			//False by default - recommend journals
+//			's.rec.jt' => $this->journalTitle ? 'true' : 'false',
+//			//False by default
+//			's.light' => $this->lightWeightRes ? 'true' : 'false',
+//			//2 by default - max database reccomendations
+//			's.rec.db.max' => $this->maxRecDb,
+//			//allows access to records
+//			's.role' =>  'authenticated',
+//		);
+//		return $options;
+//	}
 
 	/**
 	 * Use the data that is returned when from the API and process it to assign it to variables
@@ -400,6 +402,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				}
 			}
 		} $this->addToHistory();
+
 		return $html;
 	}
 
@@ -700,7 +703,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$curlConnection = $this->getCurlConnection();
 		$curlOptions = array(
 			CURLOPT_RETURNTRANSFER => 1,
-			CURLOPT_URL => $baseUrl.'?search='.$queryString.'&token='.$headers['token'],
+			CURLOPT_URL => $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit().'&all_isbns=1',
 			CURLOPT_HTTPHEADER => $modified_headers
 		);
 
@@ -709,7 +712,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		if ($result === false) {
 			throw new Exception("Error in HTTP Request.");
 		}
-		// curl_close($curlConnection);
+
+
+		 curl_close($curlConnection);
 		return $result;
 	}
 

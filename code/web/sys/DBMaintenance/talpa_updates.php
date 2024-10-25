@@ -40,6 +40,19 @@ function getTalpaUpdates() {
 				'ALTER TABLE library ADD COLUMN talpaSettingsId INT(11) DEFAULT -1',
 			],
 		],
+		'createIsbnMappingForTalpa' => [
+			'title' => 'Create groupedWorkID mapping table for Talpa Search',
+			'description' => 'Allows Talpa to return grouped work results in Talpa Search module.',
+			'continueOnError' => true,
+			'sql' => [
+				"CREATE TABLE talpa_ltwork_to_groupedwork (
+					id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+					groupedRecordPermanentId CHAR(40),
+					lt_workcode INT(11) UNSIGNED,
+					INDEX(`groupedRecordPermanentId`)
+				) ENGINE = InnoDB"
+			]
+		]
 //		'disable_hoopla_module_auto_restart' => [
 //			'title' => 'Disable Hoopla Auto Restart',
 //			'description' => 'Disable Hoopla Auto Restart',
