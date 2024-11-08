@@ -6,6 +6,13 @@ class Talpa_Results extends ResultsAction {
 		global $timer;
 		global $aspenUsage;
 		global $library;
+		global $aspenUsage;
+		$aspenUsage->groupedWorkSearches++;
+
+		//TODO Lauren consider implementing this
+//		foreach ($library->getGroupedWorkDisplaySettings()->showInSearchResultsMainDetails as $detailOption) {
+//			$interface->assign($detailOption, true);
+//		}
 
 		if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
 			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat'; //TODO LAUREN pick a default query
@@ -57,20 +64,18 @@ class Talpa_Results extends ResultsAction {
 		}
 
 		$interface->assign('lookfor', $displayQuery);
+		$interface->assign('topRecommendations', $searchObject->getRecommendationsTemplates('top'));
 
-	//Talpa Results //
-		$recordSet = $searchObject->getResultRecordHTML();
-		$interface->assign('recordSet', $recordSet);
-		$timer->logTime('load result records');
 
-		//TODO LAUREN - What do these do?
-		$interface->assign('sortList', $searchObject->getSortList());
-		$interface->assign('searchIndex', $searchObject->getSearchIndex());
+		//SET INTERFACE VARS/SETTINGS
+		$interface->assign('showLanguages', true);
 
 		$summary = $searchObject->getResultSummary();
 		$interface->assign('recordCount', $summary['resultTotal']);
 		$interface->assign('recordStart', $summary['startRecord']);
 		$interface->assign('recordEnd', $summary['endRecord']);
+
+
 
 		$appliedFacets = $searchObject->getFilterList();
 		$interface->assign('filterList', $appliedFacets);
@@ -82,6 +87,47 @@ class Talpa_Results extends ResultsAction {
 		//Figure out which counts to show.
 		$facetCountsToShow = $library->getGroupedWorkDisplaySettings()->facetCountsToShow;
 		$interface->assign('facetCountsToShow', $facetCountsToShow);
+
+
+
+
+		//Talpa Results //
+		$recordSet = $searchObject->getResultRecordHTML();
+		$interface->assign('recordSet', $recordSet);
+		$timer->logTime('load result records');
+
+		//TODO LAUREN - What do these do?
+		$interface->assign('sortList', $searchObject->getSortList());
+		$interface->assign('searchIndex', $searchObject->getSearchIndex());
+
+		//From Search/Results.php
+//		if (isset($_REQUEST['replacedIndex'])) {
+//			$replacedIndex = $_REQUEST['replacedIndex'];
+//			$interface->assign('replacedIndex', $replacedIndex);
+//
+//			/** @var SearchObject_AbstractGroupedWorkSearcher $searchObject */
+//			$searchObject = SearchObjectFactory::initSearchObject();
+//			$searchIndexes = $searchObject->getSearchIndexes();
+//			$interface->assign('replacedIndexLabel', $searchIndexes[$replacedIndex]);
+//
+//			$oldSearchUrl = $_SERVER['REQUEST_URI'];
+//			$oldSearchUrl = preg_replace('/searchIndex=Keyword/', 'searchIndex=' . $replacedIndex, $oldSearchUrl);
+//			$_REQUEST['searchIndex'] = 'Keyword';
+//			$oldSearchUrl = preg_replace('/sort=.+?(&|$)/', '', $oldSearchUrl);
+//			unset($_REQUEST['sort']);
+//			$oldSearchUrl = preg_replace("/[?&]replacedIndex=$replacedIndex/", '', $oldSearchUrl);
+//			$interface->assign('oldSearchUrl', $oldSearchUrl);
+//		}
+
+//		$interface->assign('showNotInterested', false);
+
+
+
+
+
+
+
+
 
 		if ($summary['resultTotal'] > 0) {
 			$link = $searchObject->renderLinkPageTemplate();
@@ -116,7 +162,7 @@ class Talpa_Results extends ResultsAction {
 		$interface->assign('showExploreMoreBar', $showExploreMoreBar);
 		$interface->assign('exploreMoreSearchTerm', $exploreMoreSearchTerm);
 
-	
+
 //TODO LAUREN
 		$displayTemplate = 'Talpa/list-list.tpl'; // structure for regular results
 		$interface->assign('subpage', $displayTemplate);
@@ -129,6 +175,6 @@ class Talpa_Results extends ResultsAction {
 	}
 
 	function getBreadcrumbs(): array {
-		return parent::getResultsBreadcrumbs('Articles & Databases');
+		return parent::getResultsBreadcrumbs('Talpa Search');
 	}
 }

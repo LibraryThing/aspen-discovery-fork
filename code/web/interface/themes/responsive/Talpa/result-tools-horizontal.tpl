@@ -16,7 +16,7 @@
 			{/if}
 
 			<div class="btn-group btn-group-sm">
-				{include file="Summon/share-tools.tpl"}
+				{include file="Talpa/share-tools.tpl"}
 			</div>
 		</div>
 	{/if}

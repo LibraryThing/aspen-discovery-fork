@@ -8,8 +8,8 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 	static $instance;
 	/** @var TalpaSettings */
-//	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
-	private $talpaBaseApi ='https://lp.dev.librarything.com/api/talpa.php';
+	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
+//	private $talpaBaseApi ='https://lp.dev.librarything.com/api/talpa.php';
 
 	/**Build URL */
 //	private $sessionId;
@@ -41,7 +41,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 	protected $lastSearchResults;
 
-	// Module and Action for building search results 
+	// Module and Action for building search results
 	protected $resultsModule = 'Search';
 	protected $resultsAction = 'Results';
 
@@ -122,8 +122,11 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$this->searchType = 'talpa';
 		$this->resultsModule = 'Talpa';
 		$this->resultsAction = 'Results';
+
+		global $configArray;
+		$this->indexEngine = new GroupedWorksSolrConnector2($configArray['Index']['url']);
 	}
-	 
+
 	/**
 	 * Initialise the object from the global
 	 *  search parameters in $_REQUEST.
@@ -199,7 +202,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			curl_setopt($this->curl_connection, CURLOPT_CONNECTTIMEOUT, 15);
 			curl_setopt($this->curl_connection, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)");
 			curl_setopt($this->curl_connection, CURLOPT_RETURNTRANSFER, true);
-//			curl_setopt($this->curl_connection, CURLOPT_SSL_VERIFYPEER, false);
 			curl_setopt($this->curl_connection, CURLOPT_FOLLOWLOCATION, 1);
 			curl_setopt($this->curl_connection, CURLOPT_TIMEOUT, 30);
 			curl_setopt($this->curl_connection, CURLOPT_RETURNTRANSFER, TRUE);
@@ -211,20 +213,14 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$headers = array(
 			'Accept' => 'application/'.$this->responseType,
 			'x-talpa-date' => date('D, d M Y H:i:s T'),
-//			'Host' => 'www.librarything.com'
 		);
 		return $headers;
 	}
 
-	/**
-	 * Use Library's Talpa API token to authenticate and allow connection with the Talpa API
-	*/
+
 	public function  authenticate($settings) {
 		$headers = $this->getHeaders();
 		$headers['token'] = $settings->talpaApiToken;
-//				if (!is_null($this->sessionId)){
-//					$headers['x-talpa-session-id'] = $this->sessionId;
-//				}
 		return $headers;
 	}
 
@@ -289,24 +285,47 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	/**
 	 * Use the data that is returned when from the API and process it to assign it to variables
 	 */
-	public function processData($recordData, $textQuery = null) {
-			$recordData = $this->process($recordData, $textQuery);
-			if (is_array($recordData)){
-//				$this->sessionId = $recordData['sessionId'];
-				$this->lastSearchResults = $recordData;
-//				print_r($recordData);
-				$resultsList = $recordData['response']['resultlist'];
+	public function processData($recordData, $textQuery = null)
+	{
+		$recordData = $this->process($recordData, $textQuery); //TODO Lauren- is this needed?
 
-//				$this->page = $recordData['query']['pageNumber'];
+		if (is_array($recordData)) {
+			$this->lastSearchResults = $recordData;
+			$resultsList = $recordData['response']['resultlist'];
+
+
+			for ($x = 0; $x < count($resultsList); $x++) {
+				$current = &$resultsList[$x];
+
+				require_once ROOT_DIR . '/RecordDrivers/TalpaRecordDriver.php';
+				$record = new TalpaRecordDriver($current);
+
+				if ($groupedWorkID = $record->isInLibrary()) {
+					require_once ROOT_DIR.'/RecordDrivers/GroupedWorkDriver.php';
+					$groupedWorkDriver = new GroupedWorkDriver($groupedWorkID);
+					if ($groupedWorkDriver->isValid()) {
+						//add the groupedWork data into the recordData
+						$this->lastSearchResults['response']['resultlist'][$x]['groupedWork'] = $groupedWorkDriver->getFields();
+						$this->lastSearchResults['response']['resultlist'][$x]['inLibraryB'] = 1;
+						$this->lastSearchResults['response']['resultlist'][$x]['groupedWorkID'] = $groupedWorkID;
+
+						//add solr data into recordData
+						$_recordData = $this->indexEngine->getRecord($groupedWorkID, $this->getFieldsToReturn());
+						$this->lastSearchResults['response']['resultlist'][$x]['solrRecord'] = $_recordData;
+
+					}
+
+				} elseif ($record->isValid()) {
+					$this->lastSearchResults['response']['resultlist'][$x]['inLibraryB'] = 0;
+					$this->lastSearchResults['response']['resultlist'][$x]['hasIsbnB'] = 1;
+
+				}
+
 				$this->resultsTotal = count($resultsList);
-//				$this->filters = $recordData['query']['facetValueFilters'];
-//				$splitFacets = $this->splitFacets($recordData['facetFields']);
-//				$this->facetFields = $splitFacets['facetFields'];
-//				$this->limitFields = $splitFacets['limitFields'];
 			}
 			return $recordData;
+		}
 	}
-	
 	public function splitFacets($combinedFacets) {
 		$splitFacets = [];
 		foreach($combinedFacets as $facet) {
@@ -330,7 +349,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	 * @access  public
 	 * @return  array   summary of results
 	 */
-	public function getResultSummary() {
+	public function getResultSummary() { //TODO LAUREN update the resultsTotal based on what we end up showing
 		$summary = [];
 		$summary['page'] = $this->page;
 		$summary['perPage'] = $this->limit;
@@ -389,22 +408,27 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 			for ($x = 0; $x < count($resultlist); $x++) {
 				$current = &$resultlist[$x];
-				$interface->assign('recordIndex', $x + 1);
+				$interface->assign('recordIndex', $x + 1); //TODO LAUREN index records
 				$interface->assign('resultIndex', $x + 1 + (($this->page - 1) * $this->limit));
 				require_once ROOT_DIR . '/RecordDrivers/TalpaRecordDriver.php';
 				$record = new TalpaRecordDriver($current);
 
-				if ($record->isValid()) {
+				if ($record->isInLibrary()) { //TODO LAUREN - Here add check for in-library results
+
+					$interface->assign('recordDriver', $record);
+					$html[] = $interface->fetch($record->getSearchResult(true));
+				} elseif ($record ->isValid()) {
 					$interface->assign('recordDriver', $record);
 					$html[] = $interface->fetch($record->getSearchResult());
-				} else {
-					$html[] = "Unable to find record";
+
+//					$html[] = "Unable to find record";
 				}
 			}
 		} $this->addToHistory();
 
 		return $html;
 	}
+
 
 	/**
 	 * Use the record driver to build an array of HTML displays from the search
@@ -434,7 +458,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			$html[] = "Unable to find record";
 		}
 		return $html;
-	} 
+	}
 
 	//Assign properties to each of the sort options
 	public function getSortList() {
@@ -498,7 +522,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				if ($facetId == 'IsScholarly' || $facetId == 'IsPeerReviewed') {
 					$availableFacets[$facetId]['multiSelect'] = false;
 				}
-				
+
 				$list = [];
 				foreach ($facetField['counts'] as $value) {
 					$facetValue = $value['value'];
@@ -523,6 +547,347 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		return $availableFacets;
 	}
 
+
+	public function getFacetList($filter = null) {
+		global $solrScope;
+		global $timer;
+		// If there is no filter, we'll use all facets as the filter:
+		if (is_null($filter)) {
+			$filter = $this->getFacetConfig();
+		}
+
+		$selectedAvailableAtValues = [];
+		$selectedFormatValues = [];
+		$selectedFormatCategoryValues = [];
+		foreach ($this->filterList as $field => $selectedValues) {
+			foreach ($selectedValues as $value) {
+				if ($field == 'available_at') {
+					$selectedAvailableAtValues[] = $value;
+				} elseif ($field == 'format_category') {
+					$selectedFormatCategoryValues[] = $value;
+				} elseif ($field == 'format') {
+					$selectedFormatValues[] = $value;
+				}
+			}
+		}
+
+		// Start building the facet list:
+		$list = [];
+
+		// If we have no facets to process, give up now
+//		if (!isset($this->indexResult['facet_counts'])) {
+//			return $list;
+//		} elseif (!is_array($this->indexResult['facet_counts']['facet_fields'])) {
+//			return $list;
+//		}
+
+		// Loop through every field returned by the result set
+		$validFields = array_keys($filter);
+
+		global $locationSingleton;
+		/** @var Library $currentLibrary */
+		$currentLibrary = Library::getActiveLibrary();
+		$activeLocationFacet = null;
+		$activeLocation = $locationSingleton->getActiveLocation();
+
+		if (!is_null($activeLocation)) {
+			if (empty($activeLocation->facetLabel)) {
+				$activeLocationFacet = $activeLocation->displayName;
+			} else {
+				$activeLocationFacet = $activeLocation->facetLabel;
+			}
+		} else {
+			//Use the main branch for the library if we have one
+			$locationsForLibrary = $currentLibrary->getLocations();
+			foreach ($locationsForLibrary as $tmpLocation) {
+				if ($tmpLocation->isMainBranch) {
+					if (empty($tmpLocation->facetLabel)) {
+						$activeLocationFacet = $tmpLocation->displayName;
+					} else {
+						$activeLocationFacet = $tmpLocation->facetLabel;
+					}
+					break;
+				}
+			}
+		}
+		$relatedLocationFacets = null;
+		$relatedHomeLocationFacets = null;
+		$additionalAvailableAtLocations = null;
+//		var_dump($currentLibrary);
+		if (!is_null($currentLibrary)) {
+			if ($currentLibrary->facetLabel == '') {
+				$currentLibrary->facetLabel = $currentLibrary->displayName;
+			}
+			$relatedLocationFacets = $locationSingleton->getLocationsFacetsForLibrary($currentLibrary->libraryId);
+			if (strlen($currentLibrary->additionalLocationsToShowAvailabilityFor) > 0) {
+				$additionalAvailableAtLocations = [];
+				$location = new Location();
+				if ($currentLibrary->additionalLocationsToShowAvailabilityFor != ".*"){
+					$locationsToLookfor = explode('|', $currentLibrary->additionalLocationsToShowAvailabilityFor);
+					$location->whereAddIn('code', $locationsToLookfor, true);
+				}
+				$location->find();
+				while ($location->fetch()) {
+					if ($location->facetLabel == null){
+						$location->facetLabel = $location->displayName;
+					}
+					$additionalAvailableAtLocations[] = $location->facetLabel;
+				}
+			}
+		}
+		$homeLibrary = Library::getPatronHomeLibrary();
+		if (!is_null($homeLibrary)) {
+			$relatedHomeLocationFacets = $locationSingleton->getLocationsFacetsForLibrary($homeLibrary->libraryId);
+		}
+
+
+
+		$currentResults = $this->lastSearchResults['response']['resultlist'];
+
+		$allFacets=array();
+		$facetCounts = array();
+		foreach ($currentResults as $resultKey => $result){
+			$inLibraryB = $result['inLibraryB'];
+			$talpaResultB = $result['hasIsbnB'];
+
+			if($inLibraryB)
+			{
+				$solrRecord = $result['solrRecord'];
+				$availableAt = $solrRecord['available_at'];
+				if($availableAt)
+				{ //Forcing this, to fix.
+//					$allFacets['availability_toggle'][]= array('available', 1);
+					$facetCounts['global']['count']++;
+					$allFacets['availability_toggle'][]= array('global', 1);
+				}
+				foreach ($availableAt as $location){
+					if(preg_match('mpl#', $location)){
+						$allFacets['available_at'][]= array($location, 1);
+					}
+
+				}
+			}
+			elseif ($talpaResultB) {
+//				$allFacets['availability_toggle']['talpa_result']['count']++;
+				$facetCounts['talpa_result']['count']++;
+				$allFacets['availability_toggle'][]= array('talpa_result', 1);
+			}
+
+		}
+		/** @var FacetSetting $facetConfig */
+		$facetConfig = $this->getFacetConfig();
+		foreach ($allFacets as $field => $data) {
+			// Skip filtered fields and empty arrays:
+			if (!in_array($field, $validFields) || count($data) < 1) {
+				$isValid = false;
+				if (!$isValid) {
+					continue;
+				}
+			}
+			// Initialize the settings for the current field
+			$list[$field] = [];
+			$list[$field]['field_name'] = $field;
+			// Add the on-screen label
+			if (is_object($filter[$field])) {
+				$list[$field]['label'] = $filter[$field]->displayName;
+			} else {
+				$list[$field]['label'] = $filter[$field];
+			}
+
+			// Build our array of values for this field
+			$list[$field]['list'] = [];
+			$list[$field]['hasApplied'] = false;
+			$list[$field]['multiSelect'] = $facetConfig[$field]->multiSelect;
+
+//			$foundInstitution = false;
+//			$doInstitutionProcessing = false;
+//			$foundBranch = false;
+//			$doBranchProcessing = false;
+//
+//			//Marmot specific processing to do custom resorting of facets.
+//			if (strpos($field, 'owning_library') === 0 && isset($currentLibrary) && !is_null($currentLibrary)) {
+//				$doInstitutionProcessing = true;
+//			}
+//			if (strpos($field, 'owning_location') === 0 || strpos($field, 'available_at') === 0) {
+//				$doBranchProcessing = true;
+//			}
+			// Should we translate values for the current facet?
+			$translate = $facetConfig[$field]->translate;
+			$numValidRelatedLocations = 0;
+			$numValidLibraries = 0;
+			// Loop through values:
+//			$isScopedField = $this->isScopedField($field);
+
+			foreach ($data as $facet) {
+				// Initialize the array of data about the current facet:
+				$currentSettings = [];
+				$facetValue = $facet[0];
+
+//				if ($isScopedField && strpos($facetValue, '#') !== false) {
+//					$facetValue = substr($facetValue, strpos($facetValue, '#') + 1);
+//				}
+				$currentSettings['value'] = $facetValue;
+				$currentSettings['display'] = $translate ? translate([
+					'text' => $facetValue,
+					'isPublicFacing' => true,
+					'isMetadata' => true,
+					'escape' => true,
+				]) : htmlentities($facetValue);
+				$currentSettings['count'] = $facetCounts[$facetValue]['count'];
+				$currentSettings['isApplied'] = false;
+				$currentSettings['url'] = $this->renderLinkWithFilter($field, $facetValue);
+
+				// Is this field a current filter?
+				var_dump($field);
+//				if (in_array($field, array_keys($this->filterList))) {
+				if ($field=='availability_toggle') {
+					// and is this value a selected filter?
+					if ($facetValue=='global') {
+						$currentSettings['isApplied'] = true;
+						$list[$field]['hasApplied'] = true;
+						$currentSettings['removalUrl'] = $this->renderLinkWithoutFilter("$field:{$facetValue}");
+					}
+				}
+
+				if ($field == 'availability_toggle') {
+					$currentSettings['countIsApproximate'] = (count($selectedAvailableAtValues) > 0 || count($selectedFormatCategoryValues) > 0 || count($selectedFormatValues) > 0) && $facetValue != 'global';
+				} elseif ($field == 'available_at') {
+					$currentSettings['countIsApproximate'] = $this->selectedAvailabilityToggleValue != 'global' || count($selectedFormatCategoryValues) > 0 || count($selectedFormatValues) > 0;
+				} elseif ($field == 'format_category') {
+					$currentSettings['countIsApproximate'] = $this->selectedAvailabilityToggleValue != 'global' || count($selectedAvailableAtValues) > 0 || count($selectedFormatValues) > 0;
+				} elseif ($field == 'format') {
+					$currentSettings['countIsApproximate'] = $this->selectedAvailabilityToggleValue != 'global' || count($selectedAvailableAtValues) > 0 || count($selectedFormatCategoryValues) > 0;
+				} else {
+					$currentSettings['countIsApproximate'] = false;
+				}
+
+				//Setup the key to allow sorting alphabetically if needed.
+				$valueKey = $facetValue;
+				$okToAdd = true;
+				//Don't include empty settings since they don't work properly with Solr
+				if (strlen(trim($facetValue)) == 0) {
+					$okToAdd = false;
+				}
+//				if ($doInstitutionProcessing) {
+//					if ($facetValue == $currentLibrary->facetLabel) {
+//						$valueKey = '1' . $valueKey;
+//						$numValidLibraries++;
+//						$foundInstitution = true;
+//					} elseif ($facetValue == $currentLibrary->facetLabel . ' On Order') {
+//						$valueKey = '1' . $valueKey;
+//						$foundInstitution = true;
+//						$numValidLibraries++;
+//					} elseif ($facetValue == 'Digital Collection') {
+//						$valueKey = '2' . $valueKey;
+//						$foundInstitution = true;
+//						$numValidLibraries++;
+//					}
+//				} elseif ($doBranchProcessing) {
+//					if (strlen($facetValue) > 0) {
+//						if ($activeLocationFacet != null && $facetValue == $activeLocationFacet) {
+//							$valueKey = '1' . $valueKey;
+//							$foundBranch = true;
+//							$numValidRelatedLocations++;
+//						} elseif (isset($currentLibrary) && ($facetValue == $currentLibrary->facetLabel . ' On Order')) {
+//							$valueKey = '1' . $valueKey;
+//							$numValidRelatedLocations++;
+//						} elseif (!is_null($relatedLocationFacets) && in_array($facetValue, $relatedLocationFacets)) {
+//							$valueKey = '2' . $valueKey;
+//							$numValidRelatedLocations++;
+//						} elseif (!is_null($relatedHomeLocationFacets) && in_array($facetValue, $relatedHomeLocationFacets)) {
+//							$valueKey = '2' . $valueKey;
+//							$numValidRelatedLocations++;
+//						} elseif (!is_null($additionalAvailableAtLocations) && in_array($facetValue, $additionalAvailableAtLocations)) {
+//							$valueKey = '3' . $valueKey;
+//							$numValidRelatedLocations++;
+//						} else {
+//							$valueKey = '4' . $valueKey;
+//							$numValidRelatedLocations++;
+//						}
+//					}
+//				}
+
+
+				// Store the collected values:
+				if ($okToAdd) {
+					$list[$field]['list'][$valueKey] = $currentSettings;
+				}
+			}
+
+//			if (!$foundInstitution && $doInstitutionProcessing) {
+//				$list[$field]['list']['1' . $currentLibrary->facetLabel] = [
+//					'value' => $translate ? translate([
+//						'text' => $currentLibrary->facetLabel,
+//						'isPublicFacing' => true,
+//						'escape' => true
+//					]) : htmlentities($currentLibrary->facetLabel),
+//					'display' => $translate ? translate([
+//						'text' => $currentLibrary->facetLabel,
+//						'isPublicFacing' => true,
+//						'escape' => true
+//					]) : htmlentities($currentLibrary->facetLabel),
+//					'count' => 0,
+//					'isApplied' => false,
+//					'url' => null,
+//				];
+//			}
+//			if (!$foundBranch && $doBranchProcessing && !empty($activeLocationFacet)) {
+//				$list[$field]['list']['1' . $activeLocationFacet] = [
+//					'value' => $translate ? translate([
+//						'text' => $activeLocationFacet,
+//						'isPublicFacing' => true,
+//						'escape' => true
+//					]) : htmlentities($activeLocationFacet),
+//					'display' => $translate ? translate([
+//						'text' => $activeLocationFacet,
+//						'isPublicFacing' => true,
+//						'escape' => true
+//					]) : htmlentities($activeLocationFacet),
+//					'count' => 0,
+//					'isApplied' => false,
+//					'url' => null,
+//				];
+//				$numValidRelatedLocations++;
+//			}
+//
+//			if ($doBranchProcessing || $doInstitutionProcessing) {
+//				ksort($list[$field]['list']);
+//			}
+
+			//How many facets should be shown by default
+			//Only show one system unless we are in the global scope
+			if ($field == 'owning_library_' . $solrScope && isset($currentLibrary)) {
+				$list[$field]['valuesToShow'] = $numValidLibraries;
+			} elseif ($field == 'owning_location_' . $solrScope && isset($relatedLocationFacets) && $numValidRelatedLocations > 0) {
+				$list[$field]['valuesToShow'] = $numValidRelatedLocations;
+			} elseif ($field == 'available_at_' . $solrScope) {
+				$list[$field]['valuesToShow'] = count($list[$field]['list']);
+			} else {
+				$list[$field]['valuesToShow'] = 5;
+			}
+
+			//Sort the facet alphabetically?
+			//Sort the system and location alphabetically unless we are in the global scope
+			global $solrScope;
+			if (in_array($field, [
+					'owning_library_' . $solrScope,
+					'owning_location_' . $solrScope,
+					'available_at_' . $solrScope,
+				]) && isset($currentLibrary)) {
+				$list[$field]['showAlphabetically'] = true;
+			} else {
+				$list[$field]['showAlphabetically'] = false;
+			}
+			if ($list[$field]['showAlphabetically']) {
+				ksort($list[$field]['list']);
+			}
+			$timer->logTime("Processed facet $field Translated? $translate Num values: " . count($data));
+		}
+		return $list;
+	}
+
+
+
 	public function getLimitList() {
 
 		$availableLimits=[];
@@ -531,7 +896,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				$limitId = $limitOption['displayName'];
 				$parts = preg_split('/(?=[A-Z])/', $limitId, -1, PREG_SPLIT_NO_EMPTY);
 				$displayName = implode(' ', $parts);
-			
+
 				foreach($limitOption['counts'] as $value){
 					if ($value['value'] == 'true') {
 						$isApplied = isset($this->limiters[$limitId]) && $this->limiters[$limitId] == 'y' ? 1 : 0;
@@ -545,7 +910,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 						];
 					}
 				}
-			
+
 			}
 		}
 		return $availableLimits;
@@ -583,18 +948,18 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		foreach ($this->filterList as $key => $value) {
 			if (is_array($value)) {
 				foreach ($value as $val) {
-					$encodedValue = urlencode($val); 
+					$encodedValue = urlencode($val);
 					$this->filters[] = urlencode($key) . ',' . $encodedValue . ',';
 				}
 			} else {
-				$encodedValue = urlencode($value); 
+				$encodedValue = urlencode($value);
 				$this->filters[] = urlencode($key) . ',' . $encodedValue . ',';
 			}
 		}
 		return $this->filters;
 	}
-	
-	
+
+
 	/**
 	 * Generate an HMAC hash for authentication
 	 *
@@ -635,7 +1000,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$this->startQueryTimer();
 		$query = array();
 //		$options = $this->getOptions();
-		$this->searchTerms;
+//		$this->searchTerms;
 
 		$queryString = $this->searchTerms[0]['lookfor'];
 		$queryString = urlencode($queryString);
@@ -645,12 +1010,37 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$recordData = $this->httpRequest($baseUrl, $queryString, $headers);
 
 		if (!empty($recordData)){
-			$recordData = $this->processData($recordData);
+			$this->processData($recordData);
+			$recordData = $this->lastSearchResults;
 			$this->stopQueryTimer();
 		}
-
+		$this->processSearch(); //Add in facets for recommendations to use
+		if (1) {
+			$this->initRecommendations();
+			if ( is_array($this->recommend)) {
+//				print_r($this->recommend);
+				foreach ($this->recommend as $currentSet) {
+					/** @var RecommendationInterface $current */
+					foreach ($currentSet as $current) {
+//						print_r($current);
+						$current->process();
+					}
+				}
+			}
+		}
 		return $recordData;
 	}
+
+	public function getRecommendationsTemplates($location = 'top') {
+		$returnValue = [];
+//		if (isset($this->recommend[$location]) && !empty($this->recommend[$location])) {
+			foreach ($this->recommend[$location] as $current) {
+				$returnValue[] = $current->getTemplate();
+			}
+//		}
+		return $returnValue;
+	}
+
 
 	public function process($input, $textQuery = null) {
 		// if no search options are found, assing them
@@ -703,14 +1093,15 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$curlConnection = $this->getCurlConnection();
 		$curlOptions = array(
 			CURLOPT_RETURNTRANSFER => 1,
-			CURLOPT_URL => $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit().'&all_isbns=1',
+			CURLOPT_URL => $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit(),
 			CURLOPT_HTTPHEADER => $modified_headers
 		);
 
 		curl_setopt_array($curlConnection, $curlOptions);
 		$result = curl_exec($curlConnection);
+
 		if ($result === false) {
-			throw new Exception("Error in HTTP Request.");
+			throw new Exception("Error in HTTP Request."); //TODO Lauren- Custom Talpa error msg
 		}
 
 
@@ -828,7 +1219,8 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	}
 
 	function getSearchesFile() {
-		return false;
+		return 'talpaSearches';
+
 	}
 
 	public function getSessionId() {
@@ -839,8 +1231,223 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		return $this->resultsTotal;
 	}
 
-	public function processSearch($returnIndexErrors = false, $recommendations = false, $preventQueryModification = false) {
+	public function processSearch($returnIndexErrors = false, $recommendations = true, $preventQueryModification = false) {
+		 global $solrScope;
+
+//		 $search = $this->query;
+////		 print_r($this->getSearchTerms());
+//		 $query = $this->getSearchTerms();
+//		 $search = $query[0]['lookfor'];
+//		 $search = $query;
+
+
+		$facetSet = [];
+
+		if (empty($this->selectedAvailabilityToggleValue)) {
+			$this->selectedAvailabilityToggleValue = 'global';
+		}
+		if (empty($selectedAvailableAtValues)) {
+			$selectedAvailableAtValues[] = '*';
+		}
+//		if (empty($selectedFormatCategoryValues)) {
+//			$selectedFormatCategoryValues[] = '*';
+//		}
+//		if (empty($selectedFormatValues)) {
+//			$selectedFormatValues[] = '*';
+//		}
+//		$allEditionFilters = [];
+//		$editionFiltersFormat = [];
+//		$editionFiltersFormatCategory = [];
+//		$editionFiltersFormatAvailability = [];
+//		$editionFiltersFormatAvailableAt = [];
+		foreach ($selectedAvailableAtValues as $selectedAvailableAtValue) {
+			$selectedAvailableAtValue = str_replace('(', '\(', $selectedAvailableAtValue);
+			$selectedAvailableAtValue = str_replace(')', '\)', $selectedAvailableAtValue);
+//			foreach ($selectedFormatCategoryValues as $selectedFormatCategoryValue) {
+//				foreach ($selectedFormatValues as $selectedFormatValue) {
+////					if ($selectedFormatValue != '*'){
+////						$editionFiltersFormat[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#*#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
+////					}
+////					if ($selectedFormatCategoryValue != '*'){
+////						$editionFiltersFormatCategory[] = str_replace(' ', '_', "edition_info:$solrScope#*#$selectedFormatValue#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
+////					}
+////					if ($this->selectedAvailabilityToggleValue != 'global'){
+////						$editionFiltersFormatAvailability[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#*#$selectedAvailableAtValue#");
+////					}
+////					if ($selectedAvailableAtValue != '*'){
+////						$editionFiltersFormatAvailableAt[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#$this->selectedAvailabilityToggleValue#*#");
+////					}
+//					$allEditionFilters[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
+//				}
+//			}
+		}
+//		if (count($allEditionFilters) > 0) {
+//			$allEditions = '(' . implode(' OR ', $allEditionFilters) . ')';
+//			$filterQuery[] = "{!tag=edition_info}$allEditions";
+//		}
+//		if (count($editionFiltersFormat) > 0) {
+//			$allFormatEditions = '(' . implode(' OR ', $editionFiltersFormat) . ')';
+//			$filterQuery[] = "{!tag=edition_info_format}$allFormatEditions";
+//		}
+//		if (count($editionFiltersFormatCategory) > 0) {
+//			$allFormatCategoryEditions = '(' . implode(' OR ', $editionFiltersFormatCategory) . ')';
+//			$filterQuery[] = "{!tag=edition_info_format_category}$allFormatCategoryEditions";
+//		}
+//		if (count($editionFiltersFormatAvailability) > 0) {
+//			$allAvailabilityEditions = '(' . implode(' OR ', $editionFiltersFormatAvailability) . ')';
+//			$filterQuery[] = "{!tag=edition_info_availability}$allAvailabilityEditions";
+//		}
+//		if (count($editionFiltersFormatAvailableAt) > 0) {
+//			$allAvailableAtEditions = '(' . implode(' OR ', $editionFiltersFormatAvailableAt) . ')';
+//			$filterQuery[] = "{!tag=edition_info_available_at}$allAvailableAtEditions";
+//		}
+
+		// If we are only searching one field use the DisMax handler
+		//    for that field. If left at null let solr take care of it
+//		if (count($search) == 1 && isset($search[0]['index'])) {
+//			$this->index = $search[0]['index'];
+//		}
+
+		// Build a list of facets we want from the index
+		$facetConfig = $this->getFacetConfig();
+
+		if ($recommendations && !empty($facetConfig)) {
+
+//			$facetSet['limit'] = $this->facetLimit;
+			foreach ($facetConfig as $facetField => $facetInfo) {
+				if ($facetInfo instanceof FacetSetting) {
+					$isMultiSelect = $facetInfo->multiSelect;
+					$additionalTags = '';
+					$facetName = $facetInfo->getFacetName(2);
+					if ($facetName == 'availability_toggle' || $facetName == "availability_toggle_$solrScope") {
+						//$isEditionField = true;
+						$isMultiSelect = true;
+						$additionalTags = 'edition_info,edition_info_available_at,edition_info_format_category,edition_info_format';
+					} elseif ($facetName == 'available_at' || $facetName == "available_at_$solrScope") {
+						$additionalTags = 'edition_info,edition_info_availability,edition_info_format_category,edition_info_format';
+					} elseif ($facetName == 'format_category') {
+						$isMultiSelect = true;
+						$additionalTags = 'edition_info,edition_info_availability,edition_info_available_at,edition_info_format';
+					} elseif ($facetName == 'format') {
+						$additionalTags = 'edition_info,edition_info_availability,edition_info_available_at,edition_info_format_category';
+					}
+					if ($isMultiSelect && !empty($additionalTags)) {
+						$facetKey = empty($facetInfo->id) ? $facetName : $facetInfo->id;
+						$facetSet['field'][$facetField] = "{!ex=$facetKey,$additionalTags}" . $facetField;
+					} elseif ($isMultiSelect) {
+						$facetKey = empty($facetInfo->id) ? $facetName : $facetInfo->id;
+						$facetSet['field'][$facetField] = "{!ex=$facetKey}" . $facetField;
+					} elseif (!empty($additionalTags)) {
+						$facetSet['field'][$facetField] = "{!ex=$additionalTags}" . $facetField;
+					} else {
+						$facetSet['field'][$facetField] = $facetField;
+					}
+				} else {
+					$facetSet['field'][$facetField] = $facetInfo;
+				}
+			}
+			if ($this->facetOffset != null) {
+				$facetSet['offset'] = $this->facetOffset;
+			}
+			if ($this->facetLimit != null) {
+				$facetSet['limit'] = $this->facetLimit;
+			}
+			if ($this->facetPrefix != null) {
+				$facetSet['prefix'] = $this->facetPrefix;
+			}
+			if ($this->facetSort != null) {
+				$facetSet['sort'] = $this->facetSort;
+			}
+
+			$this->facetOptions["f.series_facet.facet.mincount"] = 2;
+			$this->facetOptions["f.target_audience_full.facet.method"] = 'enum';
+			$this->facetOptions["f.target_audience.facet.method"] = 'enum';
+			$this->facetOptions["f.literary_form_full.facet.method"] = 'enum';
+			$this->facetOptions["f.literary_form.facet.method"] = 'enum';
+			$this->facetOptions["f.lexile_code.facet.method"] = 'enum';
+			$this->facetOptions["f.mpaa_rating.facet.method"] = 'enum';
+			$this->facetOptions["f.rating_facet.facet.method"] = 'enum';
+			$this->facetOptions["f.format_category.facet.method"] = 'enum';
+			$this->facetOptions["f.format.facet.method"] = 'enum';
+			$this->facetOptions["f.availability_toggle.facet.method"] = 'enum';
+			$this->facetOptions["f.local_time_since_added_$solrScope.facet.method"] = 'enum';
+			$this->facetOptions["f.owning_library.facet.method"] = 'enum';
+			$this->facetOptions["f.owning_location.facet.method"] = 'enum';
+//			foreach (SearchObject_GroupedWorkSearcher2::$scopedFields as $facetName) {
+//				$this->facetOptions["f.$facetName.facet.prefix"] = "$solrScope#";
+//			}
+		}
+		if (!empty($this->facetSearchTerm) && !empty($this->facetSearchField)) {
+			$this->facetOptions["f.{$this->facetSearchField}.facet.contains"] = $this->facetSearchTerm;
+			$this->facetOptions["f.{$this->facetSearchField}.facet.contains.ignoreCase"] = 'true';
+		}
+		if (!empty($this->facetOptions)) {
+			$facetSet['additionalOptions'] = $this->facetOptions;
+		}
+//var_dump($facetSet);
 	}
+
+	public function getFacetConfig() {
+		if ($this->facetConfig == null) {
+			$facetConfig = [];
+			$searchLibrary = Library::getActiveLibrary();
+			global $locationSingleton;
+			$searchLocation = $locationSingleton->getActiveLocation();
+			if ($searchLocation != null) {
+				$facets = $searchLocation->getGroupedWorkDisplaySettings()->getFacets();
+			} else {
+				$facets = $searchLibrary->getGroupedWorkDisplaySettings()->getFacets();
+			}
+			foreach ($facets as &$facet) {
+				//Adjust facet name for local scoping
+				$facet->facetName = $this->getScopedFieldName($facet->getFacetName($this->searchVersion));
+
+				global $action;
+				if ($action == 'Advanced') {
+					if ($facet->showInAdvancedSearch == 1) {
+						$facetConfig[$facet->facetName] = $facet;
+					}
+				} else {
+					if ($facet->showInResults == 1) {
+						$facetConfig[$facet->facetName] = $facet;
+					}
+				}
+			}
+			$this->facetConfig = $facetConfig;
+		}
+
+		return $this->facetConfig;
+	}
+
+	protected function getFieldsToReturn() {
+		if (isset($_REQUEST['allFields'])) {
+			$fieldsToReturn = '*,score';
+		} elseif ($this->fieldsToReturn != null) {
+			$fieldsToReturn = $this->fieldsToReturn;
+		} else {
+			$fieldsToReturn = SearchObject_GroupedWorkSearcher2::$fields_to_return;
+			global $solrScope;
+			if ($solrScope != false) {
+				$fieldsToReturn .= ',local_days_since_added_' . $solrScope;
+				$fieldsToReturn .= ',local_time_since_added_' . $solrScope;
+				$fieldsToReturn .= ',local_callnumber_' . $solrScope;
+				$fieldsToReturn .= ',scoping_details_' . $solrScope;
+			} else {
+				$fieldsToReturn .= ',days_since_added';
+				$fieldsToReturn .= ',local_callnumber';
+			}
+			$fieldsToReturn .= ',collection';
+			$fieldsToReturn .= ',detailed_location';
+			$fieldsToReturn .= ',owning_location';
+			$fieldsToReturn .= ',owning_library';
+			$fieldsToReturn .= ',available_at';
+			$fieldsToReturn .= ',itype';
+			$fieldsToReturn .= ',score';
+		}
+		return $fieldsToReturn;
+	}
+
+
 
 	public function __destruct() {
 		if ($this->curl_connection) {

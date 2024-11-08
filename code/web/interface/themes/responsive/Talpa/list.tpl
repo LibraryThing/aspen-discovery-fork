@@ -6,7 +6,6 @@
 			{include file=$recommendations}
 		{/foreach}
 	{/if}
-
 	<div class="result-head">
 		{* User's viewing mode toggle switch *}
 {*		{if !empty($showSearchToolsAtTop)}*}
@@ -85,7 +84,7 @@
 		{rdelim}
 
 		AspenDiscovery.Talpa.getTalpaResults("{$lookfor|escapeCSS}");
-		
+
 
 		{if empty($onInternalIP)}
 			{* Because content is served on the page, have to set the mode that was used, even if the user didn't choose the mode. *}

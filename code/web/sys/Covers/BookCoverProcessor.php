@@ -149,6 +149,12 @@ class BookCoverProcessor {
 				if ($this->getEbraryCover($this->id)) {
 					return true;
 				}
+			} elseif (stripos($this->type, 'talpa') !== false) {
+				$this->isn = $this->id;
+				if ($this->getCoverFromProvider()) {
+					return true;
+				}
+
 			} elseif (stripos($this->type, 'zinio') !== false) {
 				if ($this->getZinioCover($this->type . ':' . $this->id)) {
 					return true;

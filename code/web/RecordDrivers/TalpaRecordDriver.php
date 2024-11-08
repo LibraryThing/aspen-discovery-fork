@@ -19,11 +19,36 @@ class TalpaRecordDriver extends RecordInterface {
 		}
 	}
 
-	public function isValid() {
-		return true;
+	public function isInLibrary() {
+		$lt_workcode = $this ->record['work_id'];
+		if($lt_workcode){ //get the corresponding groupedWorkID, if we have it.
+			require_once ROOT_DIR . '/sys/Talpa/TalpaData.php';
+			$talpaData = new TalpaData();
+			$talpaData->whereAdd();
+			$talpaData->whereAdd("lt_workcode=".$lt_workcode);
+			if ($talpaData->find(true)) {
+				$groupedWorkID = $talpaData->groupedRecordPermanentId;
+				return $groupedWorkID;
+			}
+			else
+			{
+			return false;
+			}
+		}
 	}
 
-	public function getBookcoverUrl($size='large', $absolutePath = false) {
+	public function isValid()
+	{
+		$isbns = $this->record['isbns'];
+		if($isbns) {
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+
+	public function getBookcoverUrl($size='medium', $absolutePath = false) {
 		// require_once ROOT_DIR . '/sys/LibraryLocation/Library.php';
 		global $library;
 
@@ -34,23 +59,24 @@ class TalpaRecordDriver extends RecordInterface {
 			$sizeInArray = 'thumbnail_l';
 		}
 
-		if (1) {
-//		if ($library->showAvailableCoversInTalpa) {
-			if(!empty($this->record[$sizeInArray][0])){
-				$imagePath = $this->record[$sizeInArray][0];
-
-				$imageDimensions = getImageSize($imagePath);
-				if($imageDimensions[0] > 10){
-					return $imagePath;
-				}
-			}
-		}
+//		if (1) {
+////		if ($library->showAvailableCoversInTalpa) {
+//			if(!empty($this->record[$sizeInArray][0])){
+//				$imagePath = $this->record[$sizeInArray][0];
+//
+//				$imageDimensions = getImageSize($imagePath);
+//				if($imageDimensions[0] > 10){
+//					return $imagePath;
+//				}
+//			}
+//		}
 		if ($absolutePath) {
 			$bookCoverUrl = $configArray['Site']['url'];
 		} else {
 			$bookCoverUrl = '';
 		}
-		$bookCoverUrl .= "/bookcover.php?id={$this->getUniqueID()}&size={$size}&type=Talpa";
+
+		$bookCoverUrl .= "/bookcover.php?id={$this->getUniqueID()}&size={$size}&type=talpa";
 		return $bookCoverUrl;
 	}
 
@@ -65,105 +91,105 @@ class TalpaRecordDriver extends RecordInterface {
 	/**
 	 * @return string
 	 */
-	public function getAbsoluteUrl() {
-		return $this->getRecordUrl();
-	}
-
- 	public function getRecordUrl() {
-		if (isset($this->record['link'])) {
-			return $this->record['link'];
-		} else {
-			return null;
-		}
-	}
+//	public function getAbsoluteUrl() {
+//		return $this->getRecordUrl();
+//	}
+//
+// 	public function getRecordUrl() {
+//		if (isset($this->record['link'])) {
+//			return $this->record['link'];
+//		} else {
+//			return null;
+//		}
+//	}
 
 	public function getUniqueID() {
 		if (isset($this->record['ID'])) {
 			return (string)$this->record['ID'][0];
-		} else {
+		} elseif ($this->isn) {
+			return (string)$this->isn;
+		}else{
 			return null;
 		}
 	}
-	
+
 	public function getModule(): string {
 		return 'Talpa';
 	}
 
-	public function getSearchResult($view = 'list', $showListsAppearingOn = true) {
+	public function getSearchResult($inLibrary = false) {
 
 		//TODO LAUREN?
 		//		if ($view == 'covers') {
 //			return $this->getBrowseResult();
 //		}
+//		print_r($this->record);
 
 		global $interface;
-
-//print_r($this->record['rank']);
-//print_r($this->record['rank']);
-//print_r($this->record['rank']);
-//print_r($this->record['rank']);
-//print_r($this->record['rank']);
-		require_once ROOT_DIR . '/sys/SearchObject/GroupedWorkSearcher2.php';
-		require_once ROOT_DIR . '/sys/SolrConnector/GroupedWorksSolrConnector.php';
-
 		global $configArray;
-		$url = $configArray['Index']['url'];
+//		$url = $configArray['Index']['url'];
+//		print_r($this->record);
+		$lt_workcode = $this ->record['work_id'];
+		if($inLibrary)
+		{
+			if($lt_workcode){ //get the corresponding groupedWorkID, if we have it.
+				require_once ROOT_DIR . '/sys/Talpa/TalpaData.php';
+				$talpaData = new TalpaData();
+				$talpaData->whereAdd();
+				$talpaData->whereAdd("lt_workcode=".$lt_workcode);
+				if ($talpaData->find(true)) {
+					require_once ROOT_DIR.'/RecordDrivers/GroupedWorkDriver.php';
+					$groupedWorkDriver = new GroupedWorkDriver($talpaData->groupedRecordPermanentId);
+					if ($groupedWorkDriver->isValid()) {
+						$interface->assign('summID', $groupedWorkDriver->getId());
+//					$interface->assign('module', $this->getModule());
+//					$interface->assign('summRank', $this->record['rank']);
+						$formats = $groupedWorkDriver->getFormats();
+						$fields = $groupedWorkDriver->getFields();
+						$formats = $fields['literary_form_full'];
+						$formatS = join(',', $formats);
+
+						//get the most recent pub date
+						$pubdateA = $groupedWorkDriver->getPublicationDates();
+						$pubdate = max($pubdateA);
+
+						$interface->assign('summFormats', $formatS);
+						$interface->assign('summUrl', $groupedWorkDriver->getLinkUrl());
+						$interface ->assign('summRating', $groupedWorkDriver ->getRatingData());
+						$interface->assign('summTitle', $groupedWorkDriver->getTitle());
+						$interface->assign('summAuthor', $groupedWorkDriver->getPrimaryAuthor());
+						$interface->assign('summPublisher', $groupedWorkDriver->getPublishers());
+						$interface->assign('summPubDate', $pubdate);
+						$interface ->assign('summLanguage', $groupedWorkDriver->getLanguage());
+						$interface->assign('relatedManifestations', $groupedWorkDriver->getRelatedManifestations());
+						$interface->assign('summDescription', $groupedWorkDriver->getDescription());
+						$interface->assign('bookCoverUrl', $groupedWorkDriver->getBookcoverUrl('small'));
+						$interface->assign('bookCoverUrlMedium', $groupedWorkDriver->getBookcoverUrl('medium'));
+
+					}
+					else
+					{
+						//We shouldn't land here- if results are coming in as "in library" and the API is returning a work code.
+					}
+				}
+			}
+
+		}
+		else{ //Not a library result
+//			print_r($this->record);
+			$this->isn = $this ->record['isbns'][0];
+//			print_r($this->record['title'].' '.$this->isn."\n");
+			$interface->assign('summUrl', 'https://www.librarything.com/work/'.$this->record['work_id']);
+			$interface->assign('summTitle', $this->record['title']);
+			$interface->assign('bookCoverUrlMedium',$this->getBookcoverUrl());
+			$interface->assign('summAuthor', null);
+			$interface->assign('summPublisher',null);
+			$interface->assign('summPubDate', null);
+			$interface->assign('summFormats', null);
+		}
 
 
-		$isbns = ($this -> record['isbns']);
-		$isbns = $isbns[0];
 
-
-		/** @var SearchObject_AbstractGroupedWorkSearcher $_searchObject */
-		$_searchObject = SearchObjectFactory::initSearchObject();
-		$_searchObject->clearFacets();
-		$_searchObject->disableSpelling();
-		$_searchObject->disableLogging();
-		$_searchObject->setLimit(1);
-		$_searchObject->setBasicQuery($isbns, "isbn");
-print_r($_searchObject -> getSearchSource());
-exit;
-		$response = $_searchObject->processSearch(true, false, false);
-
-
-exit;
-
-
-//		$id = $this->getUniqueID();
-//		$formats = $this->getFormats();
-		$interface->assign('module', $this->getModule());
-		$interface->assign('talpaRank', $this->record['rank']);
-//		$interface->assign('talpaIsbns', $id);
-
-//		$interface->assign('talpaFormats', $formats);
-		$interface->assign('talpaUrl', $this->getLinkUrl());
-
-//		$interface->assign('talpaTitle', $this->getTitle());
-		$interface->assign('talpaTitle', $this->record['title']);
-//		$interface->assign('talpaAuthor', $this->getAuthor());
-//		$interface->assign('talpaSourceDatabase', $this->getSourceDatabase());
-//		$interface->assign('talpaHasFullText', $this->hasFullText());
-
-
-		$interface->assign('talpaDescription', $this->getDescription());
-		$interface->assign('bookCoverUrl', $this->getBookcoverUrl('small'));
-		$interface->assign('bookCoverUrlMedium', $this->getBookcoverUrl('medium'));
-//
-//		require_once ROOT_DIR . '/sys/Talpa/TalpaRecordUsage.php';
-//		global $aspenUsage;
-//		$recordUsage = new TalpaRecordUsage();
-//		$recordUsage->instance = $aspenUsage->getInstance();
-//		$recordUsage->TalpaId = $this->getUniqueID();
-//		$recordUsage->year = date('Y');
-//		$recordUsage->month = date('n');
-//		if ($recordUsage->find(true)) {
-//			$recordUsage->timesViewedInSearch++;
-//			$recordUsage->update();
-//		} else {
-//			$recordUsage->timesViewedInSearch = 1;
-//			$recordUsage->timesUsed = 0;
-//			$recordUsage->insert();
-//		}
 		return 'RecordDrivers/Talpa/result.tpl';
 	}
 
@@ -204,7 +230,7 @@ exit;
 		global $interface;
 		$formats = $this->getFormats();
 		$id = $this->getUniqueID();
-		
+
 		$interface->assign('summId', $id);
 		$interface->assign('summShortId', $id);
 		$interface->assign('module', $this->getModule());
@@ -347,7 +373,7 @@ exit;
 		}
 		return $description;
 	}
-		
+
 	public function getMoreDetailsOptions() {
 		// TODO: Implement getMoreDetailsOptions() method.
 	}
@@ -401,12 +427,12 @@ exit;
 	 * user's favorites list.
 	 *
 	 * @access  public
-	 * @param int $listId ID of list containing desired tags/notes (or null to show tags/notes from all user's lists). 
+	 * @param int $listId ID of list containing desired tags/notes (or null to show tags/notes from all user's lists).
 	 * @param bool $allowEdit Should we display edit controls?
 	 * @param bool $allowEdit Should we display edit controls?
 	 * @return  string              Name of Smarty template file to display.
 	 */
-	public function getListEntry($listId = null, $allowEdit = true) { 
+	public function getListEntry($listId = null, $allowEdit = true) {
 		$this->getSearchResult('list');
 		//Switch template
 		return 'RecordDrivers/Talpa/listEntry.tpl';
