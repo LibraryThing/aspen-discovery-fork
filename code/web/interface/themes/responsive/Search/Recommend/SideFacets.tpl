@@ -89,3 +89,6 @@
 	</div>
 {/if}
 {/strip}
+{if !empty($talpaSearchLink) }
+	{include file="Search/tryThisSearchOnTalpa.tpl"}
+{/if}

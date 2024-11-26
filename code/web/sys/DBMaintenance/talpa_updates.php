@@ -35,7 +35,8 @@ function getTalpaUpdates() {
 				"CREATE TABLE talpa_settings (
 					id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 					name VARCHAR(50) NOT NULL,
-					talpaApiToken VARCHAR(32) DEFAULT ''
+					talpaApiToken VARCHAR(32) DEFAULT '',
+					talpaSearchSourceString VARCHAR(32) DEFAULT 'Talpa Search'
 				) ENGINE=INNODB",
 				'ALTER TABLE library ADD COLUMN talpaSettingsId INT(11) DEFAULT -1',
 			],

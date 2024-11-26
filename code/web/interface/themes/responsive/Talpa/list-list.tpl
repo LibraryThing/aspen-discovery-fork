@@ -3,15 +3,4 @@
     {* This is raw HTML -- do not escape it: *}
     {$record}
 </div>
-
-{if !empty($showExploreMoreBar) && ($smarty.foreach.recordLoop.iteration == 2 || count($recordSet) < 2) && $displayExploreMoreBarInTalpa}
-    <div id="explore-more-bar-placeholder"></div>
-    <script type="text/javascript">
-        $(document).ready(
-            function () {ldelim}
-                AspenDiscovery.Searches.loadExploreMoreBar('{$exploreMoreSection}', '{$exploreMoreSearchTerm|escape:"html"}');
-            {rdelim}
-        );
-    </script>
-{/if}
 {/foreach}

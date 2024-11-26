@@ -58,18 +58,6 @@ class TalpaRecordDriver extends RecordInterface {
 		}else{
 			$sizeInArray = 'thumbnail_l';
 		}
-
-//		if (1) {
-////		if ($library->showAvailableCoversInTalpa) {
-//			if(!empty($this->record[$sizeInArray][0])){
-//				$imagePath = $this->record[$sizeInArray][0];
-//
-//				$imageDimensions = getImageSize($imagePath);
-//				if($imageDimensions[0] > 10){
-//					return $imagePath;
-//				}
-//			}
-//		}
 		if ($absolutePath) {
 			$bookCoverUrl = $configArray['Site']['url'];
 		} else {
@@ -123,15 +111,14 @@ class TalpaRecordDriver extends RecordInterface {
 		//		if ($view == 'covers') {
 //			return $this->getBrowseResult();
 //		}
-//		print_r($this->record);
+
 
 		global $interface;
 		global $configArray;
-//		$url = $configArray['Index']['url'];
-//		print_r($this->record);
 		$lt_workcode = $this ->record['work_id'];
 		if($inLibrary)
 		{
+
 			if($lt_workcode){ //get the corresponding groupedWorkID, if we have it.
 				require_once ROOT_DIR . '/sys/Talpa/TalpaData.php';
 				$talpaData = new TalpaData();
@@ -142,30 +129,101 @@ class TalpaRecordDriver extends RecordInterface {
 					$groupedWorkDriver = new GroupedWorkDriver($talpaData->groupedRecordPermanentId);
 					if ($groupedWorkDriver->isValid()) {
 						$interface->assign('summID', $groupedWorkDriver->getId());
-//					$interface->assign('module', $this->getModule());
-//					$interface->assign('summRank', $this->record['rank']);
-						$formats = $groupedWorkDriver->getFormats();
-						$fields = $groupedWorkDriver->getFields();
-						$formats = $fields['literary_form_full'];
-						$formatS = join(',', $formats);
+						$interface->assign('groupedWorkDriver', $groupedWorkDriver);
 
-						//get the most recent pub date
-						$pubdateA = $groupedWorkDriver->getPublicationDates();
-						$pubdate = max($pubdateA);
+						$relatedRecords = $groupedWorkDriver->getRelatedRecords();
+						$summPublisher = null;
+						$summPubDate = null;
+						$summPlaceOfPublication =  null;
+						$summPhysicalDesc = null;
+						$summEdition = null;
+						$summLanguage = null;
+						$summClosedCaptioned = null;
+						$isFirst = true;
+						foreach ($relatedRecords as $relatedRecord) {
+							if ($isFirst) {
+								$summPublisher = $relatedRecord->publisher;
+								$summPubDate = $relatedRecord->publicationDate;
+								$summPlaceOfPublication = $relatedRecord->placeOfPublication;
+								$summPhysicalDesc = $relatedRecord->physical;
+								$summEdition = $relatedRecord->edition;
+								$summLanguage = $relatedRecord->language;
+								$summClosedCaptioned = $relatedRecord->closedCaptioned;
+							} else {
+								if ($summPublisher != $relatedRecord->publisher) {
+									$summPublisher = null;
+								}
+								if ($summPubDate != $relatedRecord->publicationDate) {
+									$summPubDate = null;
+								}
+								if ($summPlaceOfPublication != $relatedRecord->placeOfPublication) {
+									$summPlaceOfPublication = null;
+								}
+								if ($summPhysicalDesc != $relatedRecord->physical) {
+									$summPhysicalDesc = null;
+								}
+								if ($summEdition != $relatedRecord->edition) {
+									$summEdition = null;
+								}
+								if ($summLanguage != $relatedRecord->language) {
+									$summLanguage = null;
+								}
+								if ($summClosedCaptioned != $relatedRecord->closedCaptioned) {
+									$summClosedCaptioned = null;
+								}
+							}
+							$isFirst = false;
+						}
 
-						$interface->assign('summFormats', $formatS);
 						$interface->assign('summUrl', $groupedWorkDriver->getLinkUrl());
 						$interface ->assign('summRating', $groupedWorkDriver ->getRatingData());
-						$interface->assign('summTitle', $groupedWorkDriver->getTitle());
-						$interface->assign('summAuthor', $groupedWorkDriver->getPrimaryAuthor());
-						$interface->assign('summPublisher', $groupedWorkDriver->getPublishers());
-						$interface->assign('summPubDate', $pubdate);
-						$interface ->assign('summLanguage', $groupedWorkDriver->getLanguage());
+
+
+						$shortTitle = $groupedWorkDriver->getShortTitle();
+						if (empty($shortTitle)) {
+							$interface->assign('summTitle', $groupedWorkDriver->getTitle());
+							$interface->assign('summSubTitle', '');
+						} else {
+							$interface->assign('summTitle', $shortTitle);
+							$interface->assign('summSubTitle', $groupedWorkDriver->getSubtitle());
+						}
+
+						$interface->assign('summAuthor', rtrim($groupedWorkDriver->getPrimaryAuthor(true), ','));
+						$interface->assign('summPublisher', $summPublisher);
+						$interface->assign('summPubDate', $summPubDate);
+						$interface->assign('summPlaceOfPublication', $summPlaceOfPublication);
+						$interface->assign('summPhysicalDesc', $summPhysicalDesc);
+						$interface->assign('summEdition', $summEdition);
+						$interface->assign('summClosedCaptioned', $summClosedCaptioned);
+						$interface ->assign('summLanguage', $summLanguage);
 						$interface->assign('relatedManifestations', $groupedWorkDriver->getRelatedManifestations());
 						$interface->assign('summDescription', $groupedWorkDriver->getDescription());
 						$interface->assign('bookCoverUrl', $groupedWorkDriver->getBookcoverUrl('small'));
 						$interface->assign('bookCoverUrlMedium', $groupedWorkDriver->getBookcoverUrl('medium'));
+//						$interface->assign('summDescription', $this->getDescriptionFast(true));
+						if ($groupedWorkDriver->hasCachedSeries()) {
+							$interface->assign('ajaxSeries', false);
+							$interface->assign('summSeries', $groupedWorkDriver->getSeries(false));
+						} else {
+							$interface->assign('ajaxSeries', true);
+							$interface->assign('summSeries', null);
+						}
 
+
+						$isbn = $groupedWorkDriver->getCleanISBN();
+						$interface->assign('summISBN', $isbn);
+						$interface->assign('summFormats', $groupedWorkDriver->getFormats());
+						$interface->assign('numRelatedRecords', count($relatedRecords));
+
+						$acceleratedReaderInfo = $groupedWorkDriver->getAcceleratedReaderDisplayString();
+						$interface->assign('summArInfo', $acceleratedReaderInfo);
+
+						$lexileInfo = $groupedWorkDriver->getLexileDisplayString();
+						$interface->assign('summLexileInfo', $lexileInfo);
+
+						$interface->assign('summFountasPinnell', $groupedWorkDriver->getFountasPinnellLevel());
+
+//
 					}
 					else
 					{
@@ -176,9 +234,7 @@ class TalpaRecordDriver extends RecordInterface {
 
 		}
 		else{ //Not a library result
-//			print_r($this->record);
 			$this->isn = $this ->record['isbns'][0];
-//			print_r($this->record['title'].' '.$this->isn."\n");
 			$interface->assign('summUrl', 'https://www.librarything.com/work/'.$this->record['work_id']);
 			$interface->assign('summTitle', $this->record['title']);
 			$interface->assign('bookCoverUrlMedium',$this->getBookcoverUrl());
@@ -186,6 +242,7 @@ class TalpaRecordDriver extends RecordInterface {
 			$interface->assign('summPublisher',null);
 			$interface->assign('summPubDate', null);
 			$interface->assign('summFormats', null);
+			$interface->assign('talpaResult', 1);
 		}
 
 

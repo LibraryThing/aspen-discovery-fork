@@ -27,10 +27,16 @@ $token = $talpaSettings -> talpaApiToken;
 
 $logger->log('Running Talpa ISBNs cron ', Logger::LOG_NOTICE);
 
-
+$noIsbns = 0;
+$noIsbnA = array();
 //Get all Grouped works:
 $permanent_ids = array();
-$results = $aspen_db -> query('select * from grouped_work');
+//$results = $aspen_db -> query('select * from grouped_work');
+$results = $aspen_db -> query('SELECT *
+FROM grouped_work gw
+         LEFT JOIN talpa_ltwork_to_groupedwork ltg ON gw.permanent_id = ltg.groupedRecordPermanentId
+WHERE ltg.groupedRecordPermanentId IS NULL;
+');
 
 if ($results) {
 	while ($result = $results->fetch()) {
@@ -39,7 +45,7 @@ if ($results) {
 
 }
 $results->closeCursor();
-
+print_r('FOUND '.count($permanent_ids).' permanent ID(s)');
 $retA = array();
 //Now, grab the correlating ISBNS for each grouped work ID
 foreach ($permanent_ids as $permanent_id) {
@@ -101,6 +107,8 @@ foreach ($permanent_ids as $permanent_id) {
 			$retA[$permanent_id]['isbnA'] = $isbnA;
 		}
 		else{ //We can't use it.
+			$noIsbnA[]= $permanent_id;
+			$noIsbns++;
 			continue;
 		}
 
@@ -157,7 +165,10 @@ foreach ($permanent_ids as $permanent_id) {
 		$logger->log('failed to fetch info for grouped work '.$permanent_id, Logger::LOG_NOTICE);
 	}
 }
-
+print_r("\n".'NO ISBNS found for '.$noIsbns.' records');
+//print_r($noIsbnA);
+//exit;
+print_r('SENDING '.count($retA).' groupedWorkIDs to API for processing');
 //batch up the requests
 $chunks = array_chunk($retA, 50, true);
 foreach ($chunks as $chunk) {
@@ -173,7 +184,7 @@ foreach ($chunks as $chunk) {
 	curl_setopt($curlConnection, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)");
 	curl_setopt($curlConnection, CURLOPT_RETURNTRANSFER, true);
 	curl_setopt($curlConnection, CURLOPT_FOLLOWLOCATION, 1);
-	curl_setopt($curlConnection, CURLOPT_TIMEOUT, 30);
+	curl_setopt($curlConnection, CURLOPT_TIMEOUT, 60);
 	curl_setopt($curlConnection, CURLOPT_RETURNTRANSFER, true);
 
 // Set cURL options to use POST and send data in the request body
@@ -188,20 +199,46 @@ foreach ($chunks as $chunk) {
 
 
 	$resA = json_decode($result, true);
-	$mappedWorkIDs = $resA['mappedWorkIDs'];
-	$logger->log('Work API returned  '.count($mappedWorkIDs).' mapped workids. ', Logger::LOG_NOTICE);
+
+	if(!empty($resA['msg']) && !empty($resA['mappedWorkIDs']))
+	{
+		print_r($resA['msg']."\n");
+
+		$mappedWorkIDs = $resA['mappedWorkIDs'];
+//		print_r($mappedWorkIDs);
+		$logger->log('Work API returned  '.count($mappedWorkIDs).' mapped workids. ', Logger::LOG_NOTICE);
 
 //save to the talpa_lt_to_groupedwork table
 		if($mappedWorkIDs)
 		{
 			foreach ($mappedWorkIDs as $permanent_id => $lt_workcode) {
 				$talpaData = new TalpaData();
-				$talpaData -> lt_workcode = $lt_workcode;
-				$talpaData -> groupedRecordPermanentId = $permanent_id;
 
-				$talpaData->insert();
+				$talpaData->whereAdd();
+				$talpaData->whereAdd('groupedRecordPermanentId="'.$permanent_id.'"');
+				if ($talpaData->find(true)) {
+					$talpaData->lt_workcode=$lt_workcode;
+					$talpaData->update();
+				}
+				else
+				{
+					$talpaData -> lt_workcode = $lt_workcode;
+					$talpaData -> groupedRecordPermanentId = $permanent_id;
+
+					$talpaData->insert();
+				}
+
+
+
 			}
 		}
+	}
+	else
+	{
+		print_r($result);
+//		print_r($chunk);
+	}
+
 
 }
 

@@ -374,6 +374,15 @@ class Search_Results extends ResultsAction {
 		} else {
 			$interface->assign('showShareItLink', false);
 		}
+		global $enabledModules;
+		if (array_key_exists('Talpa Search', $enabledModules)) {
+			$_talpaSearchObject = $searchObject;
+			$_talpaSearchObject->setSearchSource('talpa');
+			$_talpaSearchObject->setBasicQuery($searchObject->getQuery(), 'title');
+			$talpaSearchUrl = $_talpaSearchObject->renderSearchUrl();
+			$talpaSearchUrl = str_replace('/Search/Results','/Union/Search', $talpaSearchUrl);
+			$interface->assign('talpaSearchLink', $talpaSearchUrl);
+		}
 
 		// Save the ID of this search to the session so we can return to it easily:
 		$_SESSION['lastSearchId'] = $searchObject->getSearchId();

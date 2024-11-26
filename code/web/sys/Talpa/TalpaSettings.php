@@ -6,6 +6,7 @@ class TalpaSettings extends DataObject {
 	public $id;
 	public $name;
 	public $talpaApiToken;
+	public $talpaSearchSourceString;
 
 //	function getEncryptedFieldNames(): array {
 //		return ['talpaApiPassword'];
@@ -33,6 +34,13 @@ class TalpaSettings extends DataObject {
 				'label' => 'Talpa API Token',
 				'description' => 'The API token to use when connecting to Talpa',
 				'hideInLists' => true,
+			],
+			'talpaSearchSourceString' => [
+				'property' => 'talpaSearchSourceString',
+				'type' => 'text',
+				'label' => 'Search Source String for Talpa',
+				'description' => 'The string to show in Index to search in Talpa',
+				'hideInLists' => false,
 			],
 //			'talpa_a_id' => [
 //				'property' => 'talpa_a_id',

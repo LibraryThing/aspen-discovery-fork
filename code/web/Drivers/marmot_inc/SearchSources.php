@@ -39,6 +39,9 @@ class SearchSources {
 			case 'series':
 				$searchObject = SearchObjectFactory::initSearchObject('Series');
 				break;
+			case 'talpa':
+				$searchObject = SearchObjectFactory::initSearchObject("Talpa");
+				break;
 			case 'catalog':
 			default:
 				/** @var SearchObject_AbstractGroupedWorkSearcher $searchObject */ $searchObject = SearchObjectFactory::initSearchObject();
@@ -312,9 +315,14 @@ class SearchSources {
 			];
 		}
 		if ($searchTalpa) {
+			require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
+			$talpaSettings = new TalpaSettings();
+			if (!$talpaSettings->find(true)) {
+				$talpaSettings = null;
+			}
 			$searchOptions['talpa'] = [
-				'name' => 'Talpa Search',
-				'description' => 'Talpa Search',
+				'name' => $talpaSettings->talpaSearchSourceString,
+				'description' => $talpaSettings->talpaSearchSourceString,
 				'catalogType' => 'talpa',
 				'hasAdvancedSearch' => false,
 			];

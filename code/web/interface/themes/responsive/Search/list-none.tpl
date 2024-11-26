@@ -48,6 +48,10 @@
 				{/if}
 			{/if}
 		{/if}
+		{if !empty($talpaSearchLink) }
+			{include file="Search/tryThisSearchOnTalpa.tpl"}
+		{/if}
+
 	</p>
 
 	{* Return to Advanced Search Link *}

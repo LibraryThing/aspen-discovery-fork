@@ -123,8 +123,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$this->resultsModule = 'Talpa';
 		$this->resultsAction = 'Results';
 
-		global $configArray;
-		$this->indexEngine = new GroupedWorksSolrConnector2($configArray['Index']['url']);
+
 	}
 
 	/**
@@ -139,6 +138,8 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		// Check if we have a saved search to restore -- if restored successfully,
 		// our work here is done; if there is an error, we should report failure;
 		// if restoreSavedSearch returns false, we should proceed as normal.
+
+
 		$restored = $this->restoreSavedSearch();
 		if ($restored === true) {
 			//there is a saved search that can be reused
@@ -287,6 +288,11 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	 */
 	public function processData($recordData, $textQuery = null)
 	{
+		global $configArray;
+//		$this->indexEngine = new GroupedWorksSolrConnector2($configArray['Index']['url']);
+		require_once ROOT_DIR.'/sys/SolrConnector/GroupedWorksSolrConnector2.php';
+		$GroupedWorksSolrConnector2 = new GroupedWorksSolrConnector2($configArray['Index']['url']);
+
 		$recordData = $this->process($recordData, $textQuery); //TODO Lauren- is this needed?
 
 		if (is_array($recordData)) {
@@ -310,18 +316,25 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 						$this->lastSearchResults['response']['resultlist'][$x]['groupedWorkID'] = $groupedWorkID;
 
 						//add solr data into recordData
-						$_recordData = $this->indexEngine->getRecord($groupedWorkID, $this->getFieldsToReturn());
+//						$_recordData = $this->indexEngine->getRecord($groupedWorkID, $this->getFieldsToReturn());
+						$_recordData = $GroupedWorksSolrConnector2->getRecord($groupedWorkID, $this->getFieldsToReturn());
+//						var_dump($_recordData);
+
 						$this->lastSearchResults['response']['resultlist'][$x]['solrRecord'] = $_recordData;
 
+						//get count of in-library records
+						$this->lastSearchResults['response']['global_count']++;
+						$this->resultsTotal++;
 					}
 
 				} elseif ($record->isValid()) {
 					$this->lastSearchResults['response']['resultlist'][$x]['inLibraryB'] = 0;
 					$this->lastSearchResults['response']['resultlist'][$x]['hasIsbnB'] = 1;
-
+					$this->lastSearchResults['response']['talpa_result_count']++;
+					$this->resultsTotal++;
 				}
 
-				$this->resultsTotal = count($resultsList);
+//				$this->resultsTotal = count($resultsList);
 			}
 			return $recordData;
 		}
@@ -353,6 +366,17 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$summary = [];
 		$summary['page'] = $this->page;
 		$summary['perPage'] = $this->limit;
+
+		preg_match('/availability_toggle:"(.*?)"/', $_REQUEST['filter'][0], $matches);
+		$locationFilter = $matches[1];
+		if(($locationFilter == 'global' || !$locationFilter) && (int)$this->lastSearchResults['response']['global_count']>=1) {
+			$this->resultsTotal = (int)$this->lastSearchResults['response']['global_count'];
+
+		}else{
+			$this->resultsTotal = (int)$this->lastSearchResults['response']['talpa_result_count'];
+
+		}
+
 		$summary['resultTotal'] = (int)$this->resultsTotal;
 		// 1st record is easy, work out the start of this page
 		$summary['startRecord'] = (($this->page - 1) * $this->limit) + 1;
@@ -403,26 +427,50 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$timer->logTime("Starting to load record html");
 
 		if (isset($this->lastSearchResults)) {
+			preg_match('/availability_toggle:"(.*?)"/', $_REQUEST['filter'][0], $matches);
+			$locationFilter = $matches[1];
 
-			$resultlist = $this->lastSearchResults['response']['resultlist'];
+			$_resultlist = $this->lastSearchResults['response']['resultlist'];
 
+			//used in getSearchResult() to generate item url to return to talpa search results page
+			$interface->assign('searchSource', 'talpa');
+//			$interface ->assign('searchId', $this->lastSearchResults['response']['query_id']);
+
+
+			$inLibraryResults = array();
+			$talpaResults = array();
+			foreach ($_resultlist as $record) {
+				if($record['inLibraryB']){
+					$inLibraryResults[] = $record;
+				}elseif($record['hasIsbnB']){
+					$talpaResults[] = $record;
+				}
+			}
+
+			$inLibraryB = false;
+			$_SESSION['talpaBreadcrumb'] = 'Talpa Search: Other Results';
+			if(($locationFilter=='global' || !$locationFilter) && $this->lastSearchResults['response']['global_count']>=1){
+				$resultlist = $inLibraryResults;
+				$_SESSION['talpaBreadcrumb'] = 'Talpa Search: Library Results';
+				$inLibraryB=true;
+			} elseif ($locationFilter=='talpa_result') {
+				$resultlist = $talpaResults;
+
+			} elseif (!$locationFilter && count($inLibraryResults)==0) {
+				$resultlist = $talpaResults;
+			} else {
+				//TODO LAUREN
+			}
+
+			$this->lastSearchResults['response']['global_count']++;
 			for ($x = 0; $x < count($resultlist); $x++) {
 				$current = &$resultlist[$x];
-				$interface->assign('recordIndex', $x + 1); //TODO LAUREN index records
+				$interface->assign('recordIndex', $x + 1);
 				$interface->assign('resultIndex', $x + 1 + (($this->page - 1) * $this->limit));
 				require_once ROOT_DIR . '/RecordDrivers/TalpaRecordDriver.php';
 				$record = new TalpaRecordDriver($current);
-
-				if ($record->isInLibrary()) { //TODO LAUREN - Here add check for in-library results
-
-					$interface->assign('recordDriver', $record);
-					$html[] = $interface->fetch($record->getSearchResult(true));
-				} elseif ($record ->isValid()) {
-					$interface->assign('recordDriver', $record);
-					$html[] = $interface->fetch($record->getSearchResult());
-
-//					$html[] = "Unable to find record";
-				}
+				$interface->assign('recordDriver', $record);
+				$html[] = $interface->fetch($record->getSearchResult($inLibraryB));
 			}
 		} $this->addToHistory();
 
@@ -527,6 +575,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				foreach ($facetField['counts'] as $value) {
 					$facetValue = $value['value'];
 					//Ensures selected facet stays checked when selected - interacts with .tpl
+//					var_dump($this->filterList);
+					$filtersA = array('global', 'talpa_result');
+//					var_dump($facetId);
 					$isApplied = array_key_exists($facetId, $this->filterList) && in_array($facetValue, $this->filterList[$facetId]);
 					$facetSettings = [
 						'value' => $facetValue,
@@ -534,6 +585,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 						'count' =>$value['count'],
 						'isApplied' => $value['isApplied'],
 					];
+					$queryId = $this->lastSearchResults['response']['query_id'];
+
+
 					if ($isApplied) {
 						$facetSettings['removalUrl'] = $this->renderLinkWithoutFilter($facetId . ':' . $facetValue);
 					} else {
@@ -549,6 +603,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 
 	public function getFacetList($filter = null) {
+//		print_r($filter);
 		global $solrScope;
 		global $timer;
 		// If there is no filter, we'll use all facets as the filter:
@@ -674,6 +729,21 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			}
 
 		}
+
+		if(empty($this->filterList ))
+		{
+			if($facetCounts['global']['count'] >=1)
+			{
+				$this->filterList['availability_toggle'][0] = 'global';
+			}
+			else
+			{
+				$this->filterList['availability_toggle'][0] = 'talpa_result';
+				//TODO LAUREN handle when 0 in-library results
+			}
+		}
+
+
 		/** @var FacetSetting $facetConfig */
 		$facetConfig = $this->getFacetConfig();
 		foreach ($allFacets as $field => $data) {
@@ -722,7 +792,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				// Initialize the array of data about the current facet:
 				$currentSettings = [];
 				$facetValue = $facet[0];
-
 //				if ($isScopedField && strpos($facetValue, '#') !== false) {
 //					$facetValue = substr($facetValue, strpos($facetValue, '#') + 1);
 //				}
@@ -734,20 +803,24 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 					'escape' => true,
 				]) : htmlentities($facetValue);
 				$currentSettings['count'] = $facetCounts[$facetValue]['count'];
-				$currentSettings['isApplied'] = false;
-				$currentSettings['url'] = $this->renderLinkWithFilter($field, $facetValue);
+				$currentSettings['isApplied'] = $this->filterList['availability_toggle'][0]==$facetValue;
+
+				$baseUrl = $this->renderLinkWithFilter($field, $facetValue);
+				$queryID = $this->lastSearchResults['response']['query_id'];
+//				$currentSettings['url'] = $this->renderLinkWithFilter($field, $facetValue);
+				$currentSettings['url'] = $baseUrl.'&queryId='.$queryID;
 
 				// Is this field a current filter?
-				var_dump($field);
+
 //				if (in_array($field, array_keys($this->filterList))) {
-				if ($field=='availability_toggle') {
-					// and is this value a selected filter?
-					if ($facetValue=='global') {
-						$currentSettings['isApplied'] = true;
-						$list[$field]['hasApplied'] = true;
-						$currentSettings['removalUrl'] = $this->renderLinkWithoutFilter("$field:{$facetValue}");
-					}
-				}
+//				if ($field=='availability_toggle') {
+//					// and is this value a selected filter?
+//					if ($facetValue=='global') { //TODO LAUREN: Handle when 0 library results
+//						$currentSettings['isApplied'] = true;
+//						$list[$field]['hasApplied'] = true;
+//						$currentSettings['removalUrl'] = $this->renderLinkWithoutFilter("$field:{$facetValue}");
+//					}
+//				}
 
 				if ($field == 'availability_toggle') {
 					$currentSettings['countIsApproximate'] = (count($selectedAvailableAtValues) > 0 || count($selectedFormatCategoryValues) > 0 || count($selectedFormatValues) > 0) && $facetValue != 'global';
@@ -994,7 +1067,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	 * @throws Exception
 	 * @return object API response
 	 */
-	public function sendRequest() {
+	public function sendRequest($queryId=null) {
 		$baseUrl = $this->talpaBaseApi;
 		$settings = $this->getSettings();
 		$this->startQueryTimer();
@@ -1007,7 +1080,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 		$headers = $this->authenticate($settings);
 
-		$recordData = $this->httpRequest($baseUrl, $queryString, $headers);
+		$recordData = $this->httpRequest($baseUrl, $queryString, $headers, $queryId);
 
 		if (!empty($recordData)){
 			$this->processData($recordData);
@@ -1028,7 +1101,34 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				}
 			}
 		}
+
+//		if ($this->selectedAvailabilityToggleValue == null) {
+
+		$_SESSION['last_query_id'] = $this->lastSearchResults['response']['query_id'];
+
+		$_SESSION['last_recordData'] = serialize($recordData);
+
 		return $recordData;
+	}
+
+	public function processRepeatedSearch($result) {
+
+	$this->resultsTotal = count($result['response']['resultlist']);
+	$this->lastSearchResults = $result;
+		$this->processSearch(); //Add in facets for recommendations to use
+		if (1) {
+			$this->initRecommendations();
+			if ( is_array($this->recommend)) {
+//				print_r($this->recommend);
+				foreach ($this->recommend as $currentSet) {
+					/** @var RecommendationInterface $current */
+					foreach ($currentSet as $current) {
+//						print_r($current);
+						$current->process();
+					}
+				}
+			}
+		}
 	}
 
 	public function getRecommendationsTemplates($location = 'top') {
@@ -1085,20 +1185,27 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	/**
 	 * Send HTTP request with headers modified to meet Talpa API requirements
 	 */
-	protected function httpRequest($baseUrl, $queryString, $headers) {
+	protected function httpRequest($baseUrl, $queryString, $headers, $queryId=null) {
 		foreach ($headers as $key =>$value) {
 			$modified_headers[] = $key.": ".$value;
 		}
 
+		$requestUrl = $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit();
+		if($queryId){
+			$requestUrl =$baseUrl.'?query_id='.$queryId.'&token='.$headers['token'].'&limit='.$this->getLimit();
+		}
 		$curlConnection = $this->getCurlConnection();
 		$curlOptions = array(
 			CURLOPT_RETURNTRANSFER => 1,
-			CURLOPT_URL => $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit(),
+			CURLOPT_URL => $requestUrl,
 			CURLOPT_HTTPHEADER => $modified_headers
 		);
 
+
 		curl_setopt_array($curlConnection, $curlOptions);
 		$result = curl_exec($curlConnection);
+//var_dump($result);
+//TODO LAUREN pick up here- use the response -> queryID to cache results on the Talpa side to handle filtering.
 
 		if ($result === false) {
 			throw new Exception("Error in HTTP Request."); //TODO Lauren- Custom Talpa error msg
@@ -1146,7 +1253,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	 public function getSearchIndexes() {
 		return [
 			"Title" => translate([
-				'text' => "Title, Keyword, or Description",
+				'text' => "Ask me anything",
 				'isPublicFacing' => true,
 				'inAttribute' => true,
 			]),
@@ -1239,7 +1346,15 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 //		 $query = $this->getSearchTerms();
 //		 $search = $query[0]['lookfor'];
 //		 $search = $query;
-
+		if (1) {
+			global $library;
+			$location = Location::getSearchLocation(null);
+			if ($location != null) {
+				$groupedWorkDisplaySettings = $location->getGroupedWorkDisplaySettings();
+			} else {
+				$groupedWorkDisplaySettings = $library->getGroupedWorkDisplaySettings();
+			}
+		}
 
 		$facetSet = [];
 

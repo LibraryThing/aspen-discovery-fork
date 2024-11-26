@@ -236,6 +236,10 @@ class TalpaTopFacets implements RecommendationInterface {
 		}
 //		var_dump($facetList);
 		$interface->assign('topFacetSet', $facetList);
+		$appliedFacets = $this->searchObject->getFilterList();
+		$interface->assign('filterList', $appliedFacets);
+		$filterListApplied = $appliedFacets['Search Within'][0]['value'];
+		$interface->assign('filterListApplied', $filterListApplied);
 	}
 
 	/* getTemplate

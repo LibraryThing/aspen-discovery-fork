@@ -3851,33 +3851,7 @@ class Library extends DataObject {
 					],
 				],
 			],
-			'talpaSearchSection' => [
-				'property' => 'talpaSearchSection',
-				'type' => 'section',
-				'label' => 'Talpa Search',
-				'hideInLists' => true,
-				'renderAsHeading' => true,
-//				'permissions' => ['Library Web Builder Options'],
-				'properties' => [
-					'enableTalpaSearch' => [
-						'property' => 'enableTalpaSearch',
-						'type' => 'checkbox',
-						'label' => 'Enable Talpa as a search mode. ',
-						'description' => 'Talpa is a magical, natural-language search tool. Patrons can use this to find materials, but also to ask open-ended questions, like "Mystery book with a red cover?".',
-						'hideInLists' => true,
-						'default' => 0,
-					],
-					'talpaSettingsId' => [
-						'property' => 'talpaSettingsId',
-						'type' => 'enum',
-						'values' => $talpaSettings,
-						'label' => 'talpa Settings',
-						'description' => 'Whether or not talpa content should be included for this library.',
-						'hideInLists' => true,
-						'default' => -1,
-					],
-				],
-			],
+
 			'oaiSection' => [
 				'property' => 'oaiSection',
 				'type' => 'section',
@@ -3971,7 +3945,33 @@ class Library extends DataObject {
 					],
 				],
 			],
-
+			'talpaSearchSection' => [
+				'property' => 'talpaSearchSection',
+				'type' => 'section',
+				'label' => 'Talpa Search',
+				'hideInLists' => true,
+				'renderAsHeading' => true,
+//				'permissions' => ['Library Web Builder Options'],
+				'properties' => [
+					'enableTalpaSearch' => [
+						'property' => 'enableTalpaSearch',
+						'type' => 'checkbox',
+						'label' => 'Enable Talpa as a search mode. ',
+						'description' => 'Talpa is a magical, natural-language search tool. Patrons can use this to find materials, but also to ask open-ended questions, like "Mystery book with a red cover?".',
+						'hideInLists' => true,
+						'default' => 0,
+					],
+					'talpaSettingsId' => [
+						'property' => 'talpaSettingsId',
+						'type' => 'enum',
+						'values' => $talpaSettings,
+						'label' => 'talpa Settings',
+						'description' => 'Whether or not talpa content should be included for this library.',
+						'hideInLists' => true,
+						'default' => -1,
+					],
+				],
+			],
 
 			'casSection' => [
 				'property' => 'casSection',

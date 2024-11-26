@@ -4,33 +4,50 @@ class Talpa_Results extends ResultsAction {
 	function launch() {
 		global $interface;
 		global $timer;
-		global $aspenUsage;
 		global $library;
-		global $aspenUsage;
-		$aspenUsage->groupedWorkSearches++;
 
-		//TODO Lauren consider implementing this
-//		foreach ($library->getGroupedWorkDisplaySettings()->showInSearchResultsMainDetails as $detailOption) {
-//			$interface->assign($detailOption, true);
-//		}
+//		global $aspenUsage;
+//		$aspenUsage->groupedWorkSearches++;
+//		$aspenUsage->talpaSearches++;
+
+		global $solrScope;
+		if(!$solrScope)
+					{
+						//TODO LAUREN get library settings and use primary instance
+						$solrScope='main';
+					}
+
+		//Retrieve the Grouped Work Display settings to use in result.tpl
+		foreach ($library->getGroupedWorkDisplaySettings()->showInSearchResultsMainDetails as $detailOption) {
+			$interface->assign($detailOption, true);
+		}
 
 		if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
 			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat'; //TODO LAUREN pick a default query
 		}
 
-		$aspenUsage->talpaSearches++;
-
 		//Include Search Engine
 		/** @var SearchObject_TalpaSearcher $searchObject */
 		$searchObject = SearchObjectFactory::initSearchObject("Talpa");
-
 		$timer->logTime('Include search engine');
 
 		// Hide Covers when the user has set that setting on the Search Results Page
 		$this->setShowCovers();
 
 		$searchObject->init();
-		$result = $searchObject->sendRequest();
+
+		//If queryID matches the session data queryID (from Talpa's top facets), use those saved results to save load time.
+		if (isset($_REQUEST['queryId']) && $_SESSION['last_recordData'] && ($_SESSION['last_query_id']== $_REQUEST['queryId']) ) {
+			$result = unserialize($_SESSION['last_recordData']);
+			$searchObject->processRepeatedSearch($result);
+		}
+		elseif( isset($_REQUEST['queryId']) && ($_SESSION['last_query_id']!= $_REQUEST['queryId'])){ //two concurrent sessions, request new results
+			$result = $searchObject->sendRequest($_REQUEST['queryId']);
+		}
+		else //performing a new search
+		{
+			$result = $searchObject->sendRequest();
+		}
 
 
 		if ($result instanceof AspenError) { //TODO LAUREN error reporting
@@ -47,7 +64,7 @@ class Talpa_Results extends ResultsAction {
 						$mailer->send($systemVariables->searchErrorEmail, "$serverName Error processing Talpa search", $emailErrorDetails);
 					}
 				} catch (Exception $e) {
-					//This happens when the table has not been created
+
 				}
 			}
 
@@ -79,6 +96,11 @@ class Talpa_Results extends ResultsAction {
 
 		$appliedFacets = $searchObject->getFilterList();
 		$interface->assign('filterList', $appliedFacets);
+		var_dump($appliedFacets);
+		//TODO LAUREN I think this logic is buggy
+		$filterListApplied = $appliedFacets['Search Within'][0]['value'];
+		$interface->assign('filterListApplied', $filterListApplied);
+
 		$limitList = $searchObject->getLimitList();
 		$interface->assign('limitList', $limitList);
 		$facetSet = $searchObject->getFacetSet();
@@ -90,9 +112,9 @@ class Talpa_Results extends ResultsAction {
 
 
 
-
 		//Talpa Results //
 		$recordSet = $searchObject->getResultRecordHTML();
+
 		$interface->assign('recordSet', $recordSet);
 		$timer->logTime('load result records');
 
@@ -100,16 +122,7 @@ class Talpa_Results extends ResultsAction {
 		$interface->assign('sortList', $searchObject->getSortList());
 		$interface->assign('searchIndex', $searchObject->getSearchIndex());
 
-		//From Search/Results.php
-//		if (isset($_REQUEST['replacedIndex'])) {
-//			$replacedIndex = $_REQUEST['replacedIndex'];
-//			$interface->assign('replacedIndex', $replacedIndex);
-//
-//			/** @var SearchObject_AbstractGroupedWorkSearcher $searchObject */
-//			$searchObject = SearchObjectFactory::initSearchObject();
-//			$searchIndexes = $searchObject->getSearchIndexes();
-//			$interface->assign('replacedIndexLabel', $searchIndexes[$replacedIndex]);
-//
+
 //			$oldSearchUrl = $_SERVER['REQUEST_URI'];
 //			$oldSearchUrl = preg_replace('/searchIndex=Keyword/', 'searchIndex=' . $replacedIndex, $oldSearchUrl);
 //			$_REQUEST['searchIndex'] = 'Keyword';
@@ -119,14 +132,7 @@ class Talpa_Results extends ResultsAction {
 //			$interface->assign('oldSearchUrl', $oldSearchUrl);
 //		}
 
-//		$interface->assign('showNotInterested', false);
-
-
-
-
-
-
-
+		$interface->assign('showNotInterested', false);
 
 
 		if ($summary['resultTotal'] > 0) {
@@ -141,6 +147,7 @@ class Talpa_Results extends ResultsAction {
 		}
 
 		$searchObject->close();
+	//TODO LAUREN remove saved search?
 		$interface->assign('savedSearch', $searchObject->isSavedSearch());
 		$interface->assign('searchId', $searchObject->getSearchId());
 
@@ -150,18 +157,6 @@ class Talpa_Results extends ResultsAction {
 
 		// Save the URL of this search to the session so we can return to it easily:
 		$_SESSION['lastSearchURL'] = $searchObject->renderSearchUrl();
-
-		//Setup explore more
-		$showExploreMoreBar = true;
-		if (isset($_REQUEST['page']) && $_REQUEST['page'] > 1) {
-			$showExploreMoreBar = false;
-		}
-		$exploreMore = new ExploreMore();
-		$exploreMoreSearchTerm = $exploreMore->getExploreMoreQuery();
-		$interface->assign('exploreMoreSection', 'talpa');
-		$interface->assign('showExploreMoreBar', $showExploreMoreBar);
-		$interface->assign('exploreMoreSearchTerm', $exploreMoreSearchTerm);
-
 
 //TODO LAUREN
 		$displayTemplate = 'Talpa/list-list.tpl'; // structure for regular results
@@ -175,6 +170,6 @@ class Talpa_Results extends ResultsAction {
 	}
 
 	function getBreadcrumbs(): array {
-		return parent::getResultsBreadcrumbs('Talpa Search');
+		return parent::getResultsBreadcrumbs($_SESSION['talpaBreadcrumb']);
 	}
 }

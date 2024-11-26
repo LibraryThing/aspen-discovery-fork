@@ -55,6 +55,10 @@
 			</div>
 		{/if}
 	{/foreach}
+
+	{if $filterListApplied == 'talpa_result'}
+		<p style="text-align: center; font-weight: bold; color:#9b9b9b;">Talpa found these other results. </p>
+	{/if}
 	</div>
 {else}
 	<br>
