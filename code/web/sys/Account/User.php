@@ -4269,7 +4269,7 @@ class User extends DataObject {
 		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Settings', 'Define settings for Syndetics integration.', '/Enrichment/SyndeticsSettings'), 'Administer Third Party Enrichment API Keys');
 
 		if (array_key_exists('Talpa Search', $enabledModules)) {
-			$sections['third_party_enrichment']->addAction(new AdminAction('Talpa Search', 'Define connection information between Talpa and Aspen Discovery.', '/Talpa/TalpaSettings'), 'Administer Wikipedia Integration');
+			$sections['third_party_enrichment']->addAction(new AdminAction('Talpa Search', 'Define connection information and settings for Talpa.', '/Talpa/TalpaSettings'), 'Administer Third Party Enrichment API Keys');
 		}
 
 		$sections['third_party_enrichment']->addAction(new AdminAction('Wikipedia Integration', 'Modify which Wikipedia content is displayed for authors.', '/Admin/AuthorEnrichment'), 'Administer Wikipedia Integration');

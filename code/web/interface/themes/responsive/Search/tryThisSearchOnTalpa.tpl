@@ -1,1 +1,3 @@
-<p><a href="{$talpaSearchLink}">Try this search</a> on Talpa!</p>
+<div id="tryThisSearchOnTalpa">
+	<a class = "btn btn-primary" href="{$talpaSearchLink}">{$tryThisSearchInTalpaText}</a>
+</div>

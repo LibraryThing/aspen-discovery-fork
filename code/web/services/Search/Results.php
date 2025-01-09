@@ -382,6 +382,21 @@ class Search_Results extends ResultsAction {
 			$talpaSearchUrl = $_talpaSearchObject->renderSearchUrl();
 			$talpaSearchUrl = str_replace('/Search/Results','/Union/Search', $talpaSearchUrl);
 			$interface->assign('talpaSearchLink', $talpaSearchUrl);
+
+			//Retrieve Talpa Display settings to use in result.tpl
+			require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
+			if ($library->talpaSettingsId != -1) {
+				$talpaSettings = new TalpaSettings();
+				$talpaSettings->id = $library->talpaSettingsId;
+				if (!$talpaSettings->find(true)) { //If no settings found, Use defaults
+					$talpaSettings = null;
+				} else {
+					$interface->assign('tryThisSearchInTalpaText', $talpaSettings->tryThisSearchInTalpaText);
+					$interface->assign('tryThisSearchInTalpaSidebarSwitch', $talpaSettings->tryThisSearchInTalpaSidebarSwitch);
+					$interface->assign('tryThisSearchInTalpaNoResultsSwitch', $talpaSettings->tryThisSearchInTalpaNoResultsSwitch);
+					$interface->assign('talpaExplainerText', $talpaSettings->talpaExplainerText);
+				}
+			}
 		}
 
 		// Save the ID of this search to the session so we can return to it easily:

@@ -89,6 +89,7 @@
 	</div>
 {/if}
 {/strip}
-{if !empty($talpaSearchLink) }
+
+{if !empty($talpaSearchLink) && $tryThisSearchInTalpaSidebarSwitch ==1 }
 	{include file="Search/tryThisSearchOnTalpa.tpl"}
 {/if}

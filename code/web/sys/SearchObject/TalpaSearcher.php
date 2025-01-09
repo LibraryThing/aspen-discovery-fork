@@ -448,10 +448,12 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			}
 
 			$inLibraryB = false;
-			$_SESSION['talpaBreadcrumb'] = 'Talpa Search: Other Results';
+			$talpaSettings = $this->getSettings();
+			$searchString = $talpaSettings->talpaSearchSourceString?:'Talpa Search';
+			$_SESSION['talpaBreadcrumb'] = $searchString.': Other Results';
 			if(($locationFilter=='global' || !$locationFilter) && $this->lastSearchResults['response']['global_count']>=1){
 				$resultlist = $inLibraryResults;
-				$_SESSION['talpaBreadcrumb'] = 'Talpa Search: Library Results';
+				$_SESSION['talpaBreadcrumb'] = $searchString.': Library Results';
 				$inLibraryB=true;
 			} elseif ($locationFilter=='talpa_result') {
 				$resultlist = $talpaResults;
@@ -1079,7 +1081,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$queryString = urlencode($queryString);
 
 		$headers = $this->authenticate($settings);
-
+//TODO LAUREN ERROR FOR NO TOKEN/SETTINGS
 		$recordData = $this->httpRequest($baseUrl, $queryString, $headers, $queryId);
 
 		if (!empty($recordData)){

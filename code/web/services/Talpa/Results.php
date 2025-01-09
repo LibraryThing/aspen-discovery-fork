@@ -13,16 +13,35 @@ class Talpa_Results extends ResultsAction {
 		global $solrScope;
 		if(!$solrScope)
 					{
-						//TODO LAUREN get library settings and use primary instance
-						$solrScope='main';
+					$solrScope=$library->subdomain;
 					}
-
 		//Retrieve the Grouped Work Display settings to use in result.tpl
 		foreach ($library->getGroupedWorkDisplaySettings()->showInSearchResultsMainDetails as $detailOption) {
 			$interface->assign($detailOption, true);
 		}
 
-		if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
+		//Retrieve Talpa Display settings to use in result.tpl
+		require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
+		if ($library->talpaSettingsId != -1) {
+			$talpaSettings = new TalpaSettings();
+			$talpaSettings->id = $library->talpaSettingsId;
+			if (!$talpaSettings->find(true)) { //If no settings found, Use defaults
+				$talpaSettings = null;
+				$interface->assign('talpaExplainerText', '<p>Talpa Search is a new way to search for books and other media. Talpa combines cutting-edge technology with data from libraries, publishers and readers to enable entirely new ways of searching&mdash;and find what you\'re looking for.<a href="https://www.talpasearch.com/about">Learn more about Talpa</a>.</p>');
+				$interface->assign('talpaSearchSourceString', 'Talpa Search');
+				$interface->assign('includeTalpaLogoSwitch',1);
+				$interface->assign('talpaOtherResultsExplainerText','Talpa found these other results.');
+
+
+			}
+			else {
+				$interface->assign('talpaExplainerText', $talpaSettings->talpaExplainerText);
+				$interface->assign('talpaSearchSourceString', $talpaSettings->talpaSearchSourceString);
+				$interface->assign('includeTalpaLogoSwitch', $talpaSettings->includeTalpaLogoSwitch);
+				$interface->assign('talpaOtherResultsExplainerText', $talpaSettings->talpaOtherResultsExplainerText);
+			}
+		}
+			if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
 			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat'; //TODO LAUREN pick a default query
 		}
 
@@ -48,7 +67,6 @@ class Talpa_Results extends ResultsAction {
 		{
 			$result = $searchObject->sendRequest();
 		}
-
 
 		if ($result instanceof AspenError) { //TODO LAUREN error reporting
 			global $serverName;
@@ -96,7 +114,7 @@ class Talpa_Results extends ResultsAction {
 
 		$appliedFacets = $searchObject->getFilterList();
 		$interface->assign('filterList', $appliedFacets);
-		var_dump($appliedFacets);
+//		var_dump($appliedFacets);
 		//TODO LAUREN I think this logic is buggy
 		$filterListApplied = $appliedFacets['Search Within'][0]['value'];
 		$interface->assign('filterListApplied', $filterListApplied);

@@ -10680,6 +10680,21 @@ a.browse-thumbnail.active {
   font-style: italic;
   margin-left: 6px;
 }
+#tryThisSearchOnTalpa {
+	margin-top: 20px;
+}
+
+#talpaExplainerText {
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+#talpaExplainerText img {
+	float: left;
+	margin-right: 5px;
+}
+
+
 .tocEntry {
   margin-bottom: 2px;
 }
