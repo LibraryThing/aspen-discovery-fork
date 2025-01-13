@@ -8,8 +8,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 	static $instance;
 	/** @var TalpaSettings */
-	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
-//	private $talpaBaseApi ='https://lp.dev.librarything.com/api/talpa.php';
+//	private $talpaBaseApi ='https://www.librarything.com/api/talpa.php';
+	private $talpaBaseApi ='https://lp.dev.librarything.com/api/talpa.php';
+	//TODO LAUREN
 
 	/**Build URL */
 //	private $sessionId;
@@ -83,7 +84,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	protected $maxRecDb = 2;
 	protected $bookMark;
 	protected $debug = false;
-	protected $journalTitle = false;
+
 	protected $lightWeightRes = false;
 	protected $sort = null;
 	  /**
@@ -295,10 +296,9 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 		$recordData = $this->process($recordData, $textQuery); //TODO Lauren- is this needed?
 
-		if (is_array($recordData)) {
+		if (is_array($recordData)) { //TODO LAUREN add error here
 			$this->lastSearchResults = $recordData;
 			$resultsList = $recordData['response']['resultlist'];
-
 
 			for ($x = 0; $x < count($resultsList); $x++) {
 				$current = &$resultsList[$x];
@@ -328,8 +328,13 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 					}
 
 				} elseif ($record->isValid()) {
+
+					$bibInfo = $record->getRecord();
 					$this->lastSearchResults['response']['resultlist'][$x]['inLibraryB'] = 0;
 					$this->lastSearchResults['response']['resultlist'][$x]['hasIsbnB'] = 1;
+					$this->lastSearchResults['response']['resultlist'][$x]['hasIsbnB'] = 1;
+					$this->lastSearchResults['response']['resultlist'][$x]['author'] = $bibInfo['author'];
+					$this->lastSearchResults['response']['resultlist'][$x]['pubYear'] = $bibInfo['date'];
 					$this->lastSearchResults['response']['talpa_result_count']++;
 					$this->resultsTotal++;
 				}
@@ -431,7 +436,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			$locationFilter = $matches[1];
 
 			$_resultlist = $this->lastSearchResults['response']['resultlist'];
-
 			//used in getSearchResult() to generate item url to return to talpa search results page
 			$interface->assign('searchSource', 'talpa');
 //			$interface ->assign('searchId', $this->lastSearchResults['response']['query_id']);
@@ -712,8 +716,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				$solrRecord = $result['solrRecord'];
 				$availableAt = $solrRecord['available_at'];
 				if($availableAt)
-				{ //Forcing this, to fix.
-//					$allFacets['availability_toggle'][]= array('available', 1);
+				{
 					$facetCounts['global']['count']++;
 					$allFacets['availability_toggle'][]= array('global', 1);
 				}
@@ -1192,10 +1195,11 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			$modified_headers[] = $key.": ".$value;
 		}
 
-		$requestUrl = $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit();
+		$requestUrl = $baseUrl.'?search='.$queryString.'&token='.$headers['token'].'&limit='.$this->getLimit().'&bib_info=1';
 		if($queryId){
-			$requestUrl =$baseUrl.'?query_id='.$queryId.'&token='.$headers['token'].'&limit='.$this->getLimit();
+			$requestUrl =$baseUrl.'?query_id='.$queryId.'&token='.$headers['token'].'&limit='.$this->getLimit().'&bib_info=1';
 		}
+
 		$curlConnection = $this->getCurlConnection();
 		$curlOptions = array(
 			CURLOPT_RETURNTRANSFER => 1,
@@ -1206,8 +1210,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 		curl_setopt_array($curlConnection, $curlOptions);
 		$result = curl_exec($curlConnection);
-//var_dump($result);
-//TODO LAUREN pick up here- use the response -> queryID to cache results on the Talpa side to handle filtering.
 
 		if ($result === false) {
 			throw new Exception("Error in HTTP Request."); //TODO Lauren- Custom Talpa error msg
@@ -1343,19 +1345,12 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 	public function processSearch($returnIndexErrors = false, $recommendations = true, $preventQueryModification = false) {
 		 global $solrScope;
 
-//		 $search = $this->query;
-////		 print_r($this->getSearchTerms());
-//		 $query = $this->getSearchTerms();
-//		 $search = $query[0]['lookfor'];
-//		 $search = $query;
-		if (1) {
-			global $library;
-			$location = Location::getSearchLocation(null);
-			if ($location != null) {
-				$groupedWorkDisplaySettings = $location->getGroupedWorkDisplaySettings();
-			} else {
-				$groupedWorkDisplaySettings = $library->getGroupedWorkDisplaySettings();
-			}
+		global $library;
+		$location = Location::getSearchLocation(null);
+		if ($location != null) {
+			$groupedWorkDisplaySettings = $location->getGroupedWorkDisplaySettings();
+		} else {
+			$groupedWorkDisplaySettings = $library->getGroupedWorkDisplaySettings();
 		}
 
 		$facetSet = [];

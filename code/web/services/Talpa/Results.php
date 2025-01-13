@@ -45,6 +45,12 @@ class Talpa_Results extends ResultsAction {
 			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat'; //TODO LAUREN pick a default query
 		}
 
+		//TODO LAUREN possibly clean this up if other filters are added
+		preg_match('/availability_toggle:"(.*?)"/', $_REQUEST['filter'][0], $matches);
+		$locationFilter = $matches[1];
+		$interface->assign('availability_toggle', $locationFilter);
+		$interface->assign('showNotInterested', false);
+
 		//Include Search Engine
 		/** @var SearchObject_TalpaSearcher $searchObject */
 		$searchObject = SearchObjectFactory::initSearchObject("Talpa");
@@ -67,6 +73,18 @@ class Talpa_Results extends ResultsAction {
 		{
 			$result = $searchObject->sendRequest();
 		}
+
+
+		//Assign vars for Talpa Summaries to be ajaxed in.
+		$interface->assign('uniq_key_for_summary_retrieval', $result['response']['uniq_key_for_summary_retrieval']);
+		$interface->assign('uniq_val_for_summary_retrieval', $result['response']['uniq_val_for_summary_retrieval']);
+
+		$rawIsbns =  explode(',', $result['response']['isbnS_for_summary_retrieval']);
+		$summaryIsbnsJSON = json_encode($rawIsbns);
+		$isbnS_for_summary_retrieval = htmlspecialchars($summaryIsbnsJSON, ENT_QUOTES, 'UTF-8');
+
+		$interface->assign('isbnS_for_summary_retrieval', $isbnS_for_summary_retrieval );
+
 
 		if ($result instanceof AspenError) { //TODO LAUREN error reporting
 			global $serverName;
@@ -149,8 +167,6 @@ class Talpa_Results extends ResultsAction {
 //			$oldSearchUrl = preg_replace("/[?&]replacedIndex=$replacedIndex/", '', $oldSearchUrl);
 //			$interface->assign('oldSearchUrl', $oldSearchUrl);
 //		}
-
-		$interface->assign('showNotInterested', false);
 
 
 		if ($summary['resultTotal'] > 0) {

@@ -68,6 +68,12 @@ class TalpaRecordDriver extends RecordInterface {
 		return $bookCoverUrl;
 	}
 
+	public function getRecord() {
+		return $this->record;
+	}
+
+
+
 	/**
 	 * @param bool $unscoped
 	 * @return string
@@ -79,17 +85,6 @@ class TalpaRecordDriver extends RecordInterface {
 	/**
 	 * @return string
 	 */
-//	public function getAbsoluteUrl() {
-//		return $this->getRecordUrl();
-//	}
-//
-// 	public function getRecordUrl() {
-//		if (isset($this->record['link'])) {
-//			return $this->record['link'];
-//		} else {
-//			return null;
-//		}
-//	}
 
 	public function getUniqueID() {
 		if (isset($this->record['ID'])) {
@@ -238,11 +233,12 @@ class TalpaRecordDriver extends RecordInterface {
 			$interface->assign('summUrl', 'https://www.librarything.com/work/'.$this->record['work_id']);
 			$interface->assign('summTitle', $this->record['title']);
 			$interface->assign('bookCoverUrlMedium',$this->getBookcoverUrl());
-			$interface->assign('summAuthor', null);
+			$interface->assign('summAuthor', $this->record['author']);
 			$interface->assign('summPublisher',null);
-			$interface->assign('summPubDate', null);
-			$interface->assign('summFormats', null);
+			$interface->assign('summPubDate', $this->record['date']);
+			$interface->assign('summFormats', $this->record['media']);
 			$interface->assign('talpaResult', 1);
+			$interface->assign('talpaIsbn', $this->isn);
 		}
 
 

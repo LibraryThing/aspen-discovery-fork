@@ -39,6 +39,8 @@
 		<div class="clearer"></div>
 	</div>
 
+<input type="hidden" id="isbn_summary_retrieval_key" value="{$uniq_key_for_summary_retrieval}" />
+<input type="hidden" id="isbns_for_summary_retrieval" value="{$isbnS_for_summary_retrieval}" />
 	{if !empty($subpage)}
 		{include file=$subpage}
 	{else}
@@ -55,7 +57,7 @@
 			$('#home-page-search').show();  {*// Always show the searchbox for search results in mobile views.*}
 		{rdelim}
 
-		AspenDiscovery.Talpa.getTalpaResults("{$lookfor|escapeCSS}");
+		{*AspenDiscovery.Talpa.getTalpaResults("{$lookfor|escapeCSS}");*} //TODO Lauren
 
 
 		{if empty($onInternalIP)}
@@ -67,4 +69,70 @@
 		{/if}
 		$('#'+AspenDiscovery.Searches.displayMode).parent('label').addClass('active'); {* show user which one is selected *}
 		{rdelim});
+
+	//Talpa Summaries
+	_summary_itemsA = $('.talpa_list_summary[data-isbn]');
+
+	if (_summary_itemsA.length) {
+		_summary_itemsA.each(function () {
+			var _summary = $(this);
+			var _loadingblock = $('<div class="text_loadingblock"></div>');
+			var _loadingline = '<div class="talpaTextLoadingLine talpaTextLoading"></div>';
+			_loadingblock.append(_loadingline + _loadingline + _loadingline  + _loadingline + _loadingline);
+			_summary.empty().append(_loadingblock);
+		});
+	}
+
+
+	var isbnA = [];
+	try {
+		isbnA = JSON.parse($('#isbns_for_summary_retrieval').val());
+	} catch(err) {
+		console.log('ERROR: parsing summary isbn value')
+	}
+	var isbnS = isbnA.join(',');
+	var hashkey = $('#isbn_summary_retrieval_key').val();
+
+	var summary_update = {
+		url: 'https://lp.dev.librarything.com/ajax_syn_summaries.php',// TODO LAUREN
+		params: {
+			isbns: isbnS,
+			key: hashkey,
+			v: 2 // to get longer summaries
+		},
+		isbnA: isbnA,
+		elementA: {
+		},
+		summary_callback: function(r) {
+			if (r) {
+				if (typeof r === 'object') {
+					_summary_itemsA.each(function() {
+						var _summary = $(this);
+						var _isbn = _summary.attr('data-isbn');
+						if (_isbn) {
+							var _data_sum = r['isbn:'+_isbn];
+							if (r['isbn:'+_isbn]) {
+								var _sum_item = r['isbn:'+_isbn];
+								if (_sum_item.summary) {
+									_summary.html(_sum_item.summary);
+								}
+								else {
+									_summary.empty();
+								}
+							}
+							else {
+								_summary.empty();
+							}
+						}
+					})
+				}
+			}
+			console.log(r);
+		}
+	}
+	$.post(summary_update.url, summary_update.params, summary_update.summary_callback);
+
+
+
+
 </script>

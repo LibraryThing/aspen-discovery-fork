@@ -57,7 +57,8 @@
 	{/foreach}
 
 	{if $filterListApplied == 'talpa_result'}
-		<p style="text-align: center; font-weight: bold;">{$talpaOtherResultsExplainerText} </p>
+		<h4 style="text-align: center; font-weight: bold;">{$talpaOtherResultsExplainerText} </h4>
+
 	{/if}
 	</div>
 {else}

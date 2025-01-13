@@ -81,6 +81,11 @@ class MaterialsRequest_NewRequest extends MyAccount {
 				}
 			}
 		}
+		if($_REQUEST['talpaOther']==1)
+		{
+			$request->author = $_REQUEST['author'];
+			$request->publicationYear = $_REQUEST['publicationYear'];
+		}
 
 		$user = UserAccount::getActiveUserObj();
 		$interface->assign('patronIdCheck', $user->id);
