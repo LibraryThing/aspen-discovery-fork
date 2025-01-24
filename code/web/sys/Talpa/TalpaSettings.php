@@ -42,6 +42,7 @@ class TalpaSettings extends DataObject {
 				'label' => 'Talpa API Token',
 				'description' => 'The API token to use when connecting to Talpa',
 				'hideInLists' => true,
+				'required' => true,
 			],
 			'talpaSearchSourceString' => [
 				'property' => 'talpaSearchSourceString',
