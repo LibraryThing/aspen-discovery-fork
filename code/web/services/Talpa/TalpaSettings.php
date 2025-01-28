@@ -5,7 +5,7 @@ require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
 require_once ROOT_DIR . '/services/Admin/ObjectEditor.php';
 
 
-class Talpa_TalpaSettings extends ObjectEditor {	
+class Talpa_TalpaSettings extends ObjectEditor {
 	function getObjectType(): string {
 		return 'TalpaSettings';
 	}
@@ -56,7 +56,7 @@ class Talpa_TalpaSettings extends ObjectEditor {
 	}
 
 	function getInstructions(): string {
-		return ''; //TODO LAUREN link to talpa help page
+		return '';
 	}
 
 	function getBreadcrumbs(): array {

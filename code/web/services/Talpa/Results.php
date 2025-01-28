@@ -42,10 +42,10 @@ class Talpa_Results extends ResultsAction {
 			}
 		}
 			if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
-			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat'; //TODO LAUREN pick a default query
+			$_REQUEST['lookfor'] = 'The Man with the Yellow Hat';
 		}
 
-		//TODO LAUREN possibly clean this up if other filters are added
+
 		preg_match('/availability_toggle:"(.*?)"/', $_REQUEST['filter'][0], $matches);
 		$locationFilter = $matches[1];
 		$interface->assign('availability_toggle', $locationFilter);
@@ -86,7 +86,7 @@ class Talpa_Results extends ResultsAction {
 		$interface->assign('isbnS_for_summary_retrieval', $isbnS_for_summary_retrieval );
 
 
-		if ($result instanceof AspenError) { //TODO LAUREN error reporting
+		if ($result instanceof AspenError) {
 			global $serverName;
 			$logSearchError = true;
 			if ($logSearchError) {
@@ -132,8 +132,7 @@ class Talpa_Results extends ResultsAction {
 
 		$appliedFacets = $searchObject->getFilterList();
 		$interface->assign('filterList', $appliedFacets);
-//		var_dump($appliedFacets);
-		//TODO LAUREN I think this logic is buggy
+
 		$filterListApplied = $appliedFacets['Search Within'][0]['value'];
 		$interface->assign('filterListApplied', $filterListApplied);
 
@@ -154,20 +153,7 @@ class Talpa_Results extends ResultsAction {
 		$interface->assign('recordSet', $recordSet);
 		$timer->logTime('load result records');
 
-		//TODO LAUREN - What do these do?
-		$interface->assign('sortList', $searchObject->getSortList());
 		$interface->assign('searchIndex', $searchObject->getSearchIndex());
-
-
-//			$oldSearchUrl = $_SERVER['REQUEST_URI'];
-//			$oldSearchUrl = preg_replace('/searchIndex=Keyword/', 'searchIndex=' . $replacedIndex, $oldSearchUrl);
-//			$_REQUEST['searchIndex'] = 'Keyword';
-//			$oldSearchUrl = preg_replace('/sort=.+?(&|$)/', '', $oldSearchUrl);
-//			unset($_REQUEST['sort']);
-//			$oldSearchUrl = preg_replace("/[?&]replacedIndex=$replacedIndex/", '', $oldSearchUrl);
-//			$interface->assign('oldSearchUrl', $oldSearchUrl);
-//		}
-
 
 		if ($summary['resultTotal'] > 0) {
 			$link = $searchObject->renderLinkPageTemplate();
@@ -181,18 +167,16 @@ class Talpa_Results extends ResultsAction {
 		}
 
 		$searchObject->close();
-	//TODO LAUREN remove saved search?
-		$interface->assign('savedSearch', $searchObject->isSavedSearch());
+
 		$interface->assign('searchId', $searchObject->getSearchId());
 
-		//TODO LAUREN - UPDATE THESE?
-		// Save the ID of this search to the session so we can return to it easily:
+
 		$_SESSION['lastSearchId'] = $searchObject->getSearchId();
 
 		// Save the URL of this search to the session so we can return to it easily:
 		$_SESSION['lastSearchURL'] = $searchObject->renderSearchUrl();
 
-//TODO LAUREN
+
 		$displayTemplate = 'Talpa/list-list.tpl'; // structure for regular results
 		$interface->assign('subpage', $displayTemplate);
 		$interface->assign('sectionLabel', 'Talpa');

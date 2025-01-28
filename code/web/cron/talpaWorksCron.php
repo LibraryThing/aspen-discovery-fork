@@ -4,7 +4,7 @@ require_once __DIR__ . '/../bootstrap_aspen.php';
 require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
 require_once ROOT_DIR . '/sys/SearchObject/TalpaSearcher.php';
 
-$talpaWorkAPI ='https://lp.dev.librarything.com/api/aspen_works.php';
+$talpaWorkAPI ='https://www.librarything.com/api_aspen_works.php';
 
 //Set up Globals
 global $configArray;
@@ -33,19 +33,21 @@ $noIsbnA = array();
 $permanent_ids = array();
 //$results = $aspen_db -> query('select * from grouped_work');
 $results = $aspen_db -> query('SELECT *
-FROM grouped_work gw
-         LEFT JOIN talpa_ltwork_to_groupedwork ltg ON gw.permanent_id = ltg.groupedRecordPermanentId
-WHERE ltg.groupedRecordPermanentId IS NULL;
-');
+										FROM grouped_work gw
+										LEFT JOIN talpa_ltwork_to_groupedwork ltg
+											ON gw.permanent_id = ltg.groupedRecordPermanentId
+										WHERE ltg.groupedRecordPermanentId IS NULL;
+								');
 
 if ($results) {
 	while ($result = $results->fetch()) {
 		$permanent_ids[] = $result['permanent_id'];
 	}
-
 }
 $results->closeCursor();
-print_r('FOUND '.count($permanent_ids).' permanent ID(s)');
+
+$logger->log('FOUND '.count($permanent_ids).' permanent ID(s)', Logger::LOG_NOTICE);
+
 $retA = array();
 //Now, grab the correlating ISBNS for each grouped work ID
 foreach ($permanent_ids as $permanent_id) {
@@ -76,7 +78,6 @@ foreach ($permanent_ids as $permanent_id) {
 		if($primaryIsbnObj->isValid()) {
 			$isbnA[]= $primaryISBN;
 		}
-
 
 		$allIsbns = $groupedWorkDriver->getISBNs();
 		if(!$allIsbns  && isset($fields['isbn'])) {
@@ -114,16 +115,14 @@ foreach ($permanent_ids as $permanent_id) {
 
 			//Title and Author
 			$primaryAuthor = $groupedWorkDriver  -> getPrimaryAuthor();
-		if(!$primaryAuthor)
-			{
+		if(!$primaryAuthor) {
 				$primaryAuthor = isset($fields['author2Str'])? $fields['author2Str']:'';
 			}
 		$retA[$permanent_id]['primary_author'] = $primaryAuthor;
 
 		//secondary author
 		$auth2A = array();
-		if(isset($fields['auth_author2']))
-		{
+		if(isset($fields['auth_author2'])) {
 			$auth2A = $fields['auth_author2'];
 		}
 		$retA[$permanent_id]['secondary_author_or_contributorA'] = $auth2A;
@@ -140,12 +139,6 @@ foreach ($permanent_ids as $permanent_id) {
 			if($title){
 				$retA[$permanent_id]['base_title'] = $title;
 			}
-			else //send with empty title?
-			{
-//				unset($retA[$permanent_id]);
-//				continue;
-			}
-
 
 			$retA[$permanent_id]['full_titleA'] = isset($fields['title_full']) ? $fields['title_full'] : array();
 
@@ -160,15 +153,14 @@ foreach ($permanent_ids as $permanent_id) {
 
 		}
 
-	else
-	{
+	else {
 		$logger->log('failed to fetch info for grouped work '.$permanent_id, Logger::LOG_NOTICE);
 	}
 }
-print_r("\n".'NO ISBNS found for '.$noIsbns.' records');
-//print_r($noIsbnA);
-//exit;
-print_r('SENDING '.count($retA).' groupedWorkIDs to API for processing');
+$logger->log("\n".'NO ISBNS found for '.$noIsbns.' records', Logger::LOG_NOTICE);
+
+$logger->log('SENDING '.count($retA).' groupedWorkIDs to API for processing', Logger::LOG_NOTICE);
+
 //batch up the requests
 $chunks = array_chunk($retA, 50, true);
 foreach ($chunks as $chunk) {
@@ -197,15 +189,11 @@ foreach ($chunks as $chunk) {
 	}
 	curl_close($curlConnection);
 
-
 	$resA = json_decode($result, true);
 
-	if(!empty($resA['msg']) && !empty($resA['mappedWorkIDs']))
-	{
-		print_r($resA['msg']."\n");
-
+	if(!empty($resA['msg']) && !empty($resA['mappedWorkIDs'])) {
+		$logger->log($resA['msg']."\n", Logger::LOG_NOTICE);
 		$mappedWorkIDs = $resA['mappedWorkIDs'];
-//		print_r($mappedWorkIDs);
 		$logger->log('Work API returned  '.count($mappedWorkIDs).' mapped workids. ', Logger::LOG_NOTICE);
 
 //save to the talpa_lt_to_groupedwork table
@@ -213,33 +201,22 @@ foreach ($chunks as $chunk) {
 		{
 			foreach ($mappedWorkIDs as $permanent_id => $lt_workcode) {
 				$talpaData = new TalpaData();
-
 				$talpaData->whereAdd();
 				$talpaData->whereAdd('groupedRecordPermanentId="'.$permanent_id.'"');
 				if ($talpaData->find(true)) {
 					$talpaData->lt_workcode=$lt_workcode;
 					$talpaData->update();
-				}
-				else
-				{
+				} else {
 					$talpaData -> lt_workcode = $lt_workcode;
 					$talpaData -> groupedRecordPermanentId = $permanent_id;
-
 					$talpaData->insert();
 				}
-
-
-
 			}
 		}
 	}
-	else
-	{
-		print_r($result);
-//		print_r($chunk);
+	else {
+		$logger->log($result, Logger::LOG_NOTICE);
 	}
-
-
 }
 
 

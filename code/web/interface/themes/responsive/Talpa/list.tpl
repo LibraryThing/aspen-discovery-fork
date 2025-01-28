@@ -57,9 +57,6 @@
 			$('#home-page-search').show();  {*// Always show the searchbox for search results in mobile views.*}
 		{rdelim}
 
-		{*AspenDiscovery.Talpa.getTalpaResults("{$lookfor|escapeCSS}");*} //TODO Lauren
-
-
 		{if empty($onInternalIP)}
 			{* Because content is served on the page, have to set the mode that was used, even if the user didn't choose the mode. *}
 			AspenDiscovery.Searches.displayMode = '{$displayMode}';
@@ -94,7 +91,7 @@
 	var hashkey = $('#isbn_summary_retrieval_key').val();
 
 	var summary_update = {
-		url: 'https://lp.dev.librarything.com/ajax_syn_summaries.php',// TODO LAUREN
+		url: 'https://www.librarything.com/ajax_syn_summaries.php',
 		params: {
 			isbns: isbnS,
 			key: hashkey,

@@ -102,12 +102,6 @@ class TalpaRecordDriver extends RecordInterface {
 
 	public function getSearchResult($inLibrary = false) {
 
-		//TODO LAUREN?
-		//		if ($view == 'covers') {
-//			return $this->getBrowseResult();
-//		}
-
-
 		global $interface;
 		global $configArray;
 		$lt_workcode = $this ->record['work_id'];
@@ -246,98 +240,6 @@ class TalpaRecordDriver extends RecordInterface {
 		return 'RecordDrivers/Talpa/result.tpl';
 	}
 
-	public function getBrowseResult() {
-		global $interface;
-
-		$interface->assign('summId', $this->getUniqueID());
-		$interface->assign('summUrl', $this->getLinkUrl());
-		$interface->assign('summTitle', $this->getTitle());
-
-		//Get cover image size
-		$appliedTheme = $interface->getAppliedTheme();
-		$interface->assign('bookCoverUrl', $this->getBookcoverUrl('medium'));
-
-		$accessibleBrowseCategories = 0;
-		if ($appliedTheme) {
-			if($appliedTheme->browseCategoryImageSize == 1) {
-				$interface->assign('bookCoverUrlMedium', $this->getBookcoverUrl('large'));
-			}
-			$accessibleBrowseCategories = $appliedTheme->accessibleBrowseCategories;
-		} else {
-			$interface->assign('bookCoverUrlMedium', $this->getBookcoverUrl('medium'));
-		}
-		$interface->assign('accessibleBrowseCategories', $accessibleBrowseCategories);
-
-		return 'RecordDrivers/Talpa/browse_result.tpl';
-	}
-
-	/**
-	 * Assign necessary Smarty variables and return a template name to
-	 * load in order to display a summary of the item suitable for use in
-	 * search results.
-	 *
-	 * @access  public
-	 * @return  string              Name of Smarty template file to display.
-	 */
-	public function getCombinedResult() {
-		global $interface;
-		$formats = $this->getFormats();
-		$id = $this->getUniqueID();
-
-		$interface->assign('summId', $id);
-		$interface->assign('summShortId', $id);
-		$interface->assign('module', $this->getModule());
-		$interface->assign('summFormats', $formats);
-		$interface->assign('summUrl', $this->getLinkUrl());
-		$interface->assign('summTitle', $this->getTitle());
-		$interface->assign('summAuthor', $this->getAuthor());
-		$interface->assign('summSourceDatabase', $this->getSourceDatabase());
-		$interface->assign('summHasFullText', $this->hasFullText());
-		$interface->assign('summDescription', $this->getDescription());
-		$interface->assign('bookCoverUrl', $this->getBookcoverUrl('small'));
-		$interface->assign('bookCoverUrlMedium', $this->getBookcoverUrl('medium'));
-
-		return 'RecordDrivers/Talpa/combinedResult.tpl';
-	}
-
-	public function getSpotlightResult(CollectionSpotlight $collectionSpotlight, string $index) {
-		global $interface;
-
-		$interface->assign('showRatings', $collectionSpotlight->showRatings);
-		$interface->assign('key', $index);
-		$interface->assign('title', $this->getTitle());
-		$interface->assign('author', $this->getAuthor());
-		$interface->assign('description', $this->getDescription());
-		$interface->assign('shortId', $this->getUniqueID());
-		$interface->assign('id', $this->getUniqueID());
-		$interface->assign('titleURL', $this->getLinkUrl());
-
-		if ($collectionSpotlight->coverSize == 'small') {
-			$imageUrl = $this->getBookcoverUrl('small');
-		} else {
-			$imageUrl = $this->getBookcoverUrl('medium');
-		}
-		$interface->assign('imageUrl', $imageUrl);
-
-		if ($collectionSpotlight->showRatings) {
-			$interface->assign('ratingData', null);
-			$interface->assign('showNotInterested', false);
-		}
-
-		$result = [
-			'title' => $this->getTitle(),
-			'author' => $this->getAuthor(),
-		];
-		if ($collectionSpotlight->style == 'text-list') {
-			$result['formattedTextOnlyTitle'] = $interface->fetch('CollectionSpotlight/formattedTextOnlyTitle.tpl');
-		} elseif ($collectionSpotlight->style == 'horizontal-carousel') {
-			$result['formattedTitle'] = $interface->fetch('CollectionSpotlight/formattedHorizontalCarouselTitle.tpl');
-		} else {
-			$result['formattedTitle'] = $interface->fetch('CollectionSpotlight/formattedTitle.tpl');
-		}
-
-		return $result;
-	}
 
 	/**
 	 * Assign necessary Smarty variables and return a template name to
@@ -474,22 +376,6 @@ class TalpaRecordDriver extends RecordInterface {
 		return $this->getUniqueID();
 	}
 
-	/**
-	 * Assign necessary Smarty variables and return a template name to
-	 * load in order to display a summary of the item suitable for use in
-	 * user's favorites list.
-	 *
-	 * @access  public
-	 * @param int $listId ID of list containing desired tags/notes (or null to show tags/notes from all user's lists).
-	 * @param bool $allowEdit Should we display edit controls?
-	 * @param bool $allowEdit Should we display edit controls?
-	 * @return  string              Name of Smarty template file to display.
-	 */
-	public function getListEntry($listId = null, $allowEdit = true) {
-		$this->getSearchResult('list');
-		//Switch template
-		return 'RecordDrivers/Talpa/listEntry.tpl';
-	}
 
 	/**
 	 * Assign necessary Smarty variables and return a template name

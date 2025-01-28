@@ -21,7 +21,13 @@ function getLibraryLocationUpdates() {
 				"ALTER TABLE library ADD COLUMN symphonyBillingNoticeCategoryOptions VARCHAR(128)",
 			],
 		],
-
+		'library_enable_talpa' => [
+			'title' => 'Library enable Talpa Search',
+			'description' => 'Add a flag for whether or not Talpa Search is active',
+			'sql' => [
+				'ALTER TABLE library ADD COLUMN enableTalpaSearch TINYINT(1) DEFAULT 0',
+			],
+		],
 		'symphony_default_phone_field' => [
 			'title' => 'Symphony default phone field',
 			'description' => 'Add field to set name of default phone field (usually PHONE)',

@@ -106,4 +106,9 @@
 ##############################################
 0 9 * * * root php /usr/local/aspen-discovery/code/web/cron/generateMaterialRequestHoldCandidates.php template.linux
 
+##############################################
+# Update grouped works for TalpaAI
+0 1 * * * root php /usr/local/aspen-discovery/code/web/cron/talpaWorksCron.php {sitename}
+##############################################
+
 # Debian needs a blank line at the end of cron, make sure to add additional cron lines above this.
