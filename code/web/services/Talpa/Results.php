@@ -173,8 +173,12 @@ class Talpa_Results extends ResultsAction {
 
 		$_SESSION['lastSearchId'] = $searchObject->getSearchId();
 
-		// Save the URL of this search to the session so we can return to it easily:
-		$_SESSION['lastSearchURL'] = $searchObject->renderSearchUrl();
+		// Save the URL of this search to the session so we can return to it easily; used in Home.php to assign lastSearch interface variable for returning to results list from an individual item.
+		$baseSearchUrl = $searchObject->renderSearchUrl();
+		$currentQueryId = $_REQUEST['queryId'];
+		$lastQueryId = $_SESSION['last_query_id'];
+		$lastSearchURL = $baseSearchUrl.'&queryId='.($currentQueryId?:$lastQueryId);
+		$_SESSION['lastSearchURL'] = $lastSearchURL;
 
 
 		$displayTemplate = 'Talpa/list-list.tpl'; // structure for regular results
