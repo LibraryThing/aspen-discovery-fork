@@ -168,7 +168,7 @@
 
 <script type="text/javascript">
 
-			if ($('#horizontal-menu-bar-container').is(':visible')) {ldelim}
+			if ($('#refineSearchButton').is(':visible')) {ldelim}
 				$('#refineSearchButton').closest('div').remove();
 				var searchButtonParent = $('#horizontal-search-button-container .col-sm-12');
 				searchButtonParent.removeClass('col-tn-6 col-xs-6 col-sm-12 col-md-12');

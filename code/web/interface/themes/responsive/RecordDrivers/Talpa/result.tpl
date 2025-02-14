@@ -50,76 +50,31 @@
 						</h3>
 					</div>
 
-{*                  Perform Author search on Talpa*}
-
-{*					{if !empty($summAuthor)}*}
-
-{*						<div class="result-label col-sm-4 col-xs-12">{translate text="Author" isPublicFacing=true} </div>*}
-{*						<div class="result-value col-sm-8 col-xs-12 notranslate">*}
-{*							{if is_array($summAuthor)}*}
-{*								{foreach from=$summAuthor item=author}*}
-
-{*									<a href="/Union/Search?view=list&lookfor={$author|escape:"url"}&searchIndex=Title&searchSource=talpa">{$author|highlight}</a>*}
-
-{*								{/foreach}*}
-{*							{else}*}
-
-{*								<a href="/Union/Search?view=list&lookfor={$summAuthor|escape:"url"}&searchIndex=Title&searchSource=talpa">{$summAuthor|highlight}</a>*}
-{*							{/if}*}
-{*						</div>*}
-{*					{/if}*}
 
 {*                  Grouped Work Implementation *}
 					{if !empty($summAuthor) }
-						{if 1}
+
 							<div class="result-label col-sm-4 col-xs-12">{translate text="Author" isPublicFacing=true} </div>
 							<div class="result-value col-sm-8 col-xs-12 notranslate">
 								{if is_array($summAuthor)}
 									{foreach from=$summAuthor item=author}
-										<a href='/Author/Home?author="{$author|escape:"url"}"'>{$author|highlight}</a>
+										{if !$talpaResult}
+											<a href='/Author/Home?author="{$author|escape:"url"}"'>{$author|highlight}</a>
+										{else}
+											{$author|highlight}
+										{/if}
 									{/foreach}
 								{else}
-									<a href='/Author/Home?author="{$summAuthor|escape:"url"}"'>{$summAuthor|highlight}</a>
+									{if !$talpaResult}
+										<a href='/Author/Home?author="{$summAuthor|escape:"url"}"'>{$summAuthor|highlight}</a>
+									{else}
+										{$summAuthor|highlight}
+									{/if}
 								{/if}
 							</div>
 
-{*						{else}*}
-{*						<div class="result-value col-sm-8 col-xs-12 notranslate">*}
-{*							{if is_array($summAuthor)}*}
-{*								{foreach from=$summAuthor item=author}*}
-{*									<a href='/Author/Home?author="{$author|escape:"url"}"'>{$author|highlight}</a>*}
-{*								{/foreach}*}
-{*							{else}*}
-{*								<a href='/Author/Home?author="{$summAuthor|escape:"url"}"'>{$summAuthor|highlight}</a>*}
-{*							{/if}*}
-{*						</div>*}
-
 						{/if}
 
-					{/if}
-
-
-
-{*                  Series Talpa Implementation *}
-{*						{if !empty($showSeries)}*}
-{*							{assign var=indexedSeries value=$groupedWorkDriver->getIndexedSeries()}*}
-{*							{if $summSeries || $indexedSeries}*}
-
-{*					{assign var=seriesTitle value=$summSeries.seriesTitle}*}
-{*					{if !isset($summSeries.seriesTitle)}*}
-{*						{assign var=seriesTitle value=$indexedSeries[0].seriesTitle}*}
-{*					{/if}*}
-{*								<div class="series{$summISBN}">*}
-{*									<div class="result-label col-sm-4 col-xs-12">{translate text="Series" isPublicFacing=true} </div>*}
-{*									<div class="result-value col-sm-8 col-xs-12 notranslate">*}
-
-{*									<a class="result-value col-sm-8 col-xs-12">*}
-{*										<a href="/Union/Search?view=list&showCovers=on&lookfor={$seriesTitle|escape:"url"}&searchIndex=Title&searchSource=talpa">{$seriesTitle|escape}</a><br>*}
-
-{*									</div>*}
-{*								</div>*}
-{*							{/if}*}
-{*						{/if}*}
 
 
 {*                  Series Grouped Work Implementation *}
