@@ -52,6 +52,7 @@
 
 {* Embedded Javascript For this Page *}
 <script type="text/javascript">
+
 	$(function(){ldelim}
 		if ($('#horizontal-menu-bar-container').is(':visible')) {ldelim}
 			$('#home-page-search').show();  {*// Always show the searchbox for search results in mobile views.*}
@@ -68,6 +69,17 @@
 		{rdelim});
 
 	//Talpa Summaries
+
+	function talpaSummaryShowMore(isbn) {
+			$("#talpaSummaryTextFull-"+isbn).show();
+			$("#talpaSummaryTextTruncated-"+isbn).hide();
+		}
+
+	function talpaSummaryShowLess(isbn){
+		$("#talpaSummaryTextFull-"+isbn).hide();
+		$("#talpaSummaryTextTruncated-"+isbn).show();
+	}
+
 	_summary_itemsA = $('.talpa_list_summary[data-isbn]');
 
 	if (_summary_itemsA.length) {
@@ -111,7 +123,25 @@
 							if (r['isbn:'+_isbn]) {
 								var _sum_item = r['isbn:'+_isbn];
 								if (_sum_item.summary) {
-									_summary.html(_sum_item.summary);
+
+
+
+									var summaryText = _sum_item.summary;
+									var truncatedText = summaryText.length > 300 ? summaryText.substring(0, 300) + "..." : summaryText;
+
+									var summaryHtml ='<div id="talpaSummaryTextTruncated-'+_isbn+'">';
+									summaryHtml+= truncatedText;
+									if(summaryText.length > 300)
+										{
+											summaryHtml += '<a href="#" onClick="talpaSummaryShowMore(\'' + _isbn + '\'); return false;">(show more)</a>';
+										}
+									summaryHtml += '</div>';
+									summaryHtml += '<div id="talpaSummaryTextFull-'+_isbn+'" style="display: none;">';
+									summaryHtml += summaryText;
+									summaryHtml += '<a href="#" onClick="talpaSummaryShowLess(\'' + _isbn + '\'); return false;">(show less)</a>';
+									summaryHtml += '</div>';
+
+									_summary.html(summaryHtml);
 								}
 								else {
 									_summary.empty();
@@ -135,7 +165,8 @@
 </script>
 
 
-	<script type="text/javascript">
+
+<script type="text/javascript">
 
 			if ($('#horizontal-menu-bar-container').is(':visible')) {ldelim}
 				$('#refineSearchButton').closest('div').remove();
