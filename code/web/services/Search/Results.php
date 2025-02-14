@@ -376,7 +376,8 @@ class Search_Results extends ResultsAction {
 		}
 		global $enabledModules;
 		if (array_key_exists('Talpa Search', $enabledModules)) {
-			$_talpaSearchObject = $searchObject;
+			require_once ROOT_DIR . '/sys/SearchObject/SearchObjectFactory.php';
+			$_talpaSearchObject = SearchObjectFactory::initSearchObject("Talpa");
 			$_talpaSearchObject->setSearchSource('talpa');
 			$_talpaSearchObject->setBasicQuery($searchObject->getQuery(), 'title');
 			$talpaSearchUrl = $_talpaSearchObject->renderSearchUrl();
