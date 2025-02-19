@@ -315,7 +315,7 @@
 							</div>
 						{elseif $materialRequestType == 2}
 							<div class="materialsRequestLink result-value col-sm-8 col-xs-12" style="margin-top: 10px;">
-								<p> <a href="/MaterialsRequest/NewRequestIls?lookfor={$summTitle}&searchIndex={$searchIndex}" onclick="return AspenDiscovery.Account.followLinkIfLoggedIn(this);" class="btn btn-sm btn-default">{translate text='Suggest for purchase' isPublicFacing=true}</a></p>
+								<p> <a href="/MaterialsRequest/NewRequestIls?lookfor={$summTitle}&author={$summAuthor}&isbn={$talpaIsbn}&talpaResult=1" onclick="return AspenDiscovery.Account.followLinkIfLoggedIn(this);" class="btn btn-sm btn-default">{translate text='Suggest for purchase' isPublicFacing=true}</a></p>
 							</div>
 						{elseif $materialRequestType == 3}
 							<div class="materialsRequestLink result-value col-sm-8 col-xs-12" style="margin-top: 10px;">
