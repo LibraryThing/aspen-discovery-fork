@@ -173,7 +173,7 @@
 				var searchButtonParent = $('#horizontal-search-button-container .col-sm-12');
 				searchButtonParent.removeClass('col-tn-6 col-xs-6 col-sm-12 col-md-12');
 
-				// Add new classes to center the Search button
+				//center the Search button
 				searchButtonParent.addClass('col-xs-12 col-sm-6 col-sm-offset-3');
 
 			{rdelim}

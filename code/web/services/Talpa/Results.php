@@ -21,24 +21,36 @@ class Talpa_Results extends ResultsAction {
 		}
 
 		//Retrieve Talpa Display settings to use in result.tpl
+		$defaultTalpaExplainerText = '<p>Talpa Search is a new way to search for books and other media using natural language to find items by plot details, genre, descriptions, and more. Talpa combines cutting-edge technology with data from libraries, publishers and readers to enable entirely new ways of searching&mdash;and find what you\'re looking for.</p>
+		
+		<p>Try searches like: "astronaut stranded on Mars", "novels about France during World War II", "recent cozy mysteries", or "books set in jacksonville florida".</p>
+		<p><a href="https://www.talpasearch.com/about" target="_blank">Learn more about Talpa</a>.</p>';
+
+		$defaultTalpaSearchSourceString = 'Talpa Search';
+
+		$defaultTalpaOtherResultsExplainerText = 'Talpa found these other results.';
+
 		require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
 		if ($library->talpaSettingsId != -1) {
 			$talpaSettings = new TalpaSettings();
 			$talpaSettings->id = $library->talpaSettingsId;
 			if (!$talpaSettings->find(true)) { //If no settings found, Use defaults
 				$talpaSettings = null;
-				$interface->assign('talpaExplainerText', '<p>Talpa Search is a new way to search for books and other media. Talpa combines cutting-edge technology with data from libraries, publishers and readers to enable entirely new ways of searching&mdash;and find what you\'re looking for.<a href="https://www.talpasearch.com/about">Learn more about Talpa</a>.</p>');
-				$interface->assign('talpaSearchSourceString', 'Talpa Search');
+				$interface->assign('talpaExplainerText', $defaultTalpaExplainerText);
+				$interface->assign('talpaSearchSourceString', $defaultTalpaSearchSourceString);
 				$interface->assign('includeTalpaLogoSwitch',1);
-				$interface->assign('talpaOtherResultsExplainerText','Talpa found these other results.');
+				$interface->assign('talpaOtherResultsExplainerText',$defaultTalpaOtherResultsExplainerText);
 
 
-			}
-			else {
-				$interface->assign('talpaExplainerText', $talpaSettings->talpaExplainerText);
-				$interface->assign('talpaSearchSourceString', $talpaSettings->talpaSearchSourceString);
+			}else {
+				if(trim(strip_tags($talpaSettings->talpaExplainerText)) == '') {
+					$interface->assign('talpaExplainerText', $defaultTalpaExplainerText);
+					} else {
+					$interface->assign('talpaExplainerText', $talpaSettings->talpaExplainerText);
+					}
+				$interface->assign('talpaSearchSourceString', $talpaSettings->talpaSearchSourceString?:$defaultTalpaSearchSourceString);
 				$interface->assign('includeTalpaLogoSwitch', $talpaSettings->includeTalpaLogoSwitch);
-				$interface->assign('talpaOtherResultsExplainerText', $talpaSettings->talpaOtherResultsExplainerText);
+				$interface->assign('talpaOtherResultsExplainerText', $talpaSettings->talpaOtherResultsExplainerText?:$defaultTalpaOtherResultsExplainerText);
 			}
 		}
 			if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {

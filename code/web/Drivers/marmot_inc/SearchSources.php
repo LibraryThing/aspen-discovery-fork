@@ -321,8 +321,8 @@ class SearchSources {
 				$talpaSettings = null;
 			}
 			$searchOptions['talpa'] = [
-				'name' => $talpaSettings->talpaSearchSourceString,
-				'description' => $talpaSettings->talpaSearchSourceString,
+				'name' => $talpaSettings->talpaSearchSourceString?:'Talpa Search',
+				'description' => $talpaSettings->talpaSearchSourceString?:'Talpa Search',
 				'catalogType' => 'talpa',
 				'hasAdvancedSearch' => false,
 			];

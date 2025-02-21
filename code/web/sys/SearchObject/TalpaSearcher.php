@@ -1059,7 +1059,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			}
 
 			$talpaSettings = $this -> getSettings();
-			$searchSourceString = $talpaSettings->talpaSearchSourceString;
+			$searchSourceString = $talpaSettings->talpaSearchSourceString?:'Talpa Search';
 
 			// Detect errors
 			if (isset(SearchObject_TalpaSearcher::$searchOptions['errors']) && is_array(SearchObject_TalpaSearcher::$searchOptions['errors'])) {

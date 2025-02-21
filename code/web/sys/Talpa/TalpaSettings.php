@@ -7,6 +7,8 @@ class TalpaSettings extends DataObject {
 	public $name;
 	public $talpaApiToken;
 	public $talpaSearchSourceString;
+
+	public $talpaTryItButton;
 	public $tryThisSearchInTalpaText;
 	public $tryThisSearchInTalpaSidebarSwitch;
 	public $tryThisSearchInTalpaNoResultsSwitch;
@@ -21,6 +23,14 @@ class TalpaSettings extends DataObject {
 //	}
 
 	public static function getObjectStructure($context = ''): array {
+		$buttonOptions = [
+			0 => 'None',
+			1 => 'Plain Text (custom)',
+			2 => 'Talpa Button 1 ("What\'s that book?")',
+			3 => 'Talpa Button 2 (light theme)',
+			4 => 'Talpa Button 3 (dark theme)',
+		];
+
 		return [
 			'id' => [
 				'property' => 'id',
@@ -48,23 +58,34 @@ class TalpaSettings extends DataObject {
 				'property' => 'talpaSearchSourceString',
 				'type' => 'text',
 				'label' => 'Search Source String for Talpa',
-				'description' => 'What to show in search dropdown menu to search in Talpa',
+				'description' => 'What to show in search dropdown menu to search in Talpa. Leave blank to use the default value (Talpa Search).',
 				'hideInLists' => false,
 				'default' => 'Talpa Search',
+			],
+			'talpaTryItButton' => [
+				'property' => 'talpaTryItButton',
+				'type' => 'enum',
+				'values' => $buttonOptions,
+				'label' => '"Try this search in Talpa" button',
+				'description' => 'Promote the use of Talpa within your catalog! Refer to your configuration documentation for visuals of the button options.',
+				'hideInLists' => true,
+//				'onchange' => 'return AspenDiscovery.Talpa.updateTalpaButtonFields();', //TODO LAUREN
+				'onchange' => 'updateTalpaButtonFields()',
+				'default' => 2,
 			],
 			'tryThisSearchInTalpaText' => [
 				'property' => 'tryThisSearchInTalpaText',
 				'type' => 'text',
-				'label' => 'Custom "Try this search in Talpa" Link Text',
-				'description' => 'Use custom text for the &rdquo;Try this Search in Talpa&rdquo; link (if enabled anywhere in the catalog). Leave blank to use the default value.',
+				'label' => 'Custom "Try this search in Talpa" button text',
+				'description' => 'This text explains what the Talpa button in your catalog does. If you select the Plain Text button, this will be the text on the button. Otherwise, this text will appear underneath the selected button. Leave blank to use the default text (&rdquo;Try this search in Talpa&rdquo;).',
 				'hideInLists' => false,
 				'default' => 'Try this search in Talpa',
 			],
 			'tryThisSearchInTalpaSidebarSwitch' => [
 				'property' => 'tryThisSearchInTalpaSidebarSwitch',
 				'type' => 'checkbox',
-				'label' => 'Link in Sidebar',
-				'description' => 'You can promote the use of Talpa by adding this link in your main library catalog sidebar, which will launch the patron\'s search terms in Talpa.',
+				'label' => 'Include button in Sidebar',
+				'description' => 'You can promote the use of Talpa by adding this button in your main library catalog sidebar, which will launch the patron\'s search terms in Talpa.',
 				'hideInLists' => false,
 				'default' => 1,
 			],
@@ -72,8 +93,8 @@ class TalpaSettings extends DataObject {
 			'tryThisSearchInTalpaNoResultsSwitch' => [
 				'property' => 'tryThisSearchInTalpaNoResultsSwitch',
 				'type' => 'checkbox',
-				'label' => 'Link in "No Results"',
-				'description' => 'You can promote the use of Talpa by adding this link when no search results are found, which will launch the patron\'s search terms in Talpa. ',
+				'label' => 'Include button in "No Results"',
+				'description' => 'You can promote the use of Talpa by adding this button when no search results are found, which will launch the patron\'s search terms in Talpa. ',
 				'hideInLists' => false,
 				'default' => 1,
 			],
@@ -82,9 +103,12 @@ class TalpaSettings extends DataObject {
 				'type' => 'html',
 				'allowableTags' => '<p><em><i><strong><b><a><ul><ol><li><h1><h2><h3><h4><h5><h6><h7><pre><hr><table><tbody><tr><th><td><caption><img><br><div><span><sub><sup>',
 				'label' => 'Custom Talpa Explainer Text',
-				'description' => 'This is the text that customers will see in the sidebar when performing a Talpa Search; it explains what Talpa is and how it works.',
+				'description' => 'This is the text that customers will see in the sidebar when performing a Talpa Search; it explains what Talpa is and how it works. Leave blank to use the default value.',
 				'hideInLists' => true,
-				'default' => '<p>Talpa Search is a new way to search for books and other media. Talpa combines cutting-edge technology with data from libraries, publishers and readers to enable entirely new ways of searching&mdash;and find what you\'re looking for.</span> <a href="https://www.talpasearch.com/about" target="_blank">Learn more about Talpa</a>. </p>',
+				'default' => '<p>Talpa Search is a new way to search for books and other media using natural language to find items by plot details, genre, descriptions, and more. Talpa combines cutting-edge technology with data from libraries, publishers and readers to enable entirely new ways of searching&mdash;and find what you\'re looking for.</p>
+		
+				<p>Try searches like: "astronaut stranded on Mars", "novels about France during World War II", "recent cozy mysteries", or "books set in jacksonville florida".</p>
+				<p><a href="https://www.talpasearch.com/about" target="_blank">Learn more about Talpa</a>.</p>',
 			],
 			'includeTalpaLogoSwitch' => [
 				'property' => 'includeTalpaLogoSwitch',
@@ -98,7 +122,7 @@ class TalpaSettings extends DataObject {
 				'property' => 'talpaOtherResultsExplainerText',
 				'type' => 'text',
 				'label' => 'Custom "Other Results" explainer text',
-				'description' => 'This appears under the "Other Results" filter and explains the results that Talpa found that are not held by your library.',
+				'description' => 'This appears under the "Other Results" filter and explains the results that Talpa found that are not held by your library. Leave blank to use the default value (Talpa found these other results).',
 				'hideInLists' => true,
 				'default' => 'Talpa found these other results.',
 			],
@@ -113,3 +137,5 @@ class TalpaSettings extends DataObject {
 		];
 	}
 }
+
+

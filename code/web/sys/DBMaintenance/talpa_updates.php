@@ -19,6 +19,7 @@ function getTalpaUpdates() {
 					name VARCHAR(50) NOT NULL,
 					talpaApiToken VARCHAR(32) DEFAULT '',
 					talpaSearchSourceString VARCHAR(32) DEFAULT 'Talpa Search',
+					talpaTryItButton TINYINT(1) UNSIGNED DEFAULT 2,
 					tryThisSearchInTalpaText VARCHAR(32) DEFAULT 'Try this search in Talpa',
 					tryThisSearchInTalpaSidebarSwitch TINYINT(1) UNSIGNED DEFAULT 1,
 					tryThisSearchInTalpaNoResultsSwitch TINYINT(1) UNSIGNED DEFAULT 1,
