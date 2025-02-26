@@ -6,15 +6,11 @@ class Talpa_Results extends ResultsAction {
 		global $timer;
 		global $library;
 
-//		global $aspenUsage;
-//		$aspenUsage->groupedWorkSearches++;
-//		$aspenUsage->talpaSearches++;
-
 		global $solrScope;
-		if(!$solrScope)
-					{
-					$solrScope=$library->subdomain;
-					}
+		if(!$solrScope) {
+			$solrScope=$library->subdomain;
+		}
+
 		//Retrieve the Grouped Work Display settings to use in result.tpl
 		foreach ($library->getGroupedWorkDisplaySettings()->showInSearchResultsMainDetails as $detailOption) {
 			$interface->assign($detailOption, true);
@@ -40,6 +36,7 @@ class Talpa_Results extends ResultsAction {
 				$interface->assign('talpaSearchSourceString', $defaultTalpaSearchSourceString);
 				$interface->assign('includeTalpaLogoSwitch',1);
 				$interface->assign('talpaOtherResultsExplainerText',$defaultTalpaOtherResultsExplainerText);
+				$interface->assign('includeTalpaOtherResultsSwitch',1);
 
 
 			}else {
@@ -51,6 +48,7 @@ class Talpa_Results extends ResultsAction {
 				$interface->assign('talpaSearchSourceString', $talpaSettings->talpaSearchSourceString?:$defaultTalpaSearchSourceString);
 				$interface->assign('includeTalpaLogoSwitch', $talpaSettings->includeTalpaLogoSwitch);
 				$interface->assign('talpaOtherResultsExplainerText', $talpaSettings->talpaOtherResultsExplainerText?:$defaultTalpaOtherResultsExplainerText);
+				$interface->assign('includeTalpaOtherResultsSwitch',$talpaSettings->includeTalpaOtherResultsSwitch?:1);
 			}
 		}
 			if (!isset($_REQUEST['lookfor']) || empty($_REQUEST['lookfor'])) {
@@ -139,7 +137,6 @@ class Talpa_Results extends ResultsAction {
 		$interface->assign('recordCount', $summary['resultTotal']);
 		$interface->assign('recordStart', $summary['startRecord']);
 		$interface->assign('recordEnd', $summary['endRecord']);
-
 
 
 		$appliedFacets = $searchObject->getFilterList();

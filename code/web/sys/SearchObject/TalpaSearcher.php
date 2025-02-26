@@ -378,7 +378,11 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 		}else{
 			$this->resultsTotal = (int)$this->lastSearchResults['response']['talpa_result_count'];
+			$talpaSettings = $this->getSettings();
 
+			if(!$talpaSettings->includeTalpaOtherResultsSwitch){
+				$this->resultsTotal = 0;
+			}
 		}
 
 		$summary['resultTotal'] = (int)$this->resultsTotal;
@@ -438,13 +442,14 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			//used in getSearchResult() to generate item url to return to talpa search results page
 			$interface->assign('searchSource', 'talpa');
 
+			$talpaSettings = $this-> getSettings();
 
 			$inLibraryResults = array();
 			$talpaResults = array();
 			foreach ($_resultlist as $record) {
 				if($record['inLibraryB']){
 					$inLibraryResults[] = $record;
-				}elseif($record['hasIsbnB']){
+				}elseif($record['hasIsbnB'] && $talpaSettings->includeTalpaOtherResultsSwitch){
 					$talpaResults[] = $record;
 				}
 			}
@@ -558,7 +563,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 
 	public function getFacetList($filter = null) {
-//		print_r($filter);
+
 		global $solrScope;
 		global $timer;
 		// If there is no filter, we'll use all facets as the filter:
@@ -584,12 +589,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		// Start building the facet list:
 		$list = [];
 
-		// If we have no facets to process, give up now
-//		if (!isset($this->indexResult['facet_counts'])) {
-//			return $list;
-//		} elseif (!is_array($this->indexResult['facet_counts']['facet_fields'])) {
-//			return $list;
-//		}
 
 		// Loop through every field returned by the result set
 		$validFields = array_keys($filter);
@@ -623,7 +622,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		$relatedLocationFacets = null;
 		$relatedHomeLocationFacets = null;
 		$additionalAvailableAtLocations = null;
-//		var_dump($currentLibrary);
+
 		if (!is_null($currentLibrary)) {
 			if ($currentLibrary->facetLabel == '') {
 				$currentLibrary->facetLabel = $currentLibrary->displayName;
@@ -656,9 +655,11 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 
 		$allFacets=array();
 		$facetCounts = array();
+		$talpaSettings = $this ->getSettings();
+
 		foreach ($currentResults as $resultKey => $result){
 			$inLibraryB = $result['inLibraryB'];
-			$talpaResultB = $result['hasIsbnB'];
+			$talpaResultB = $result['hasIsbnB'] && $talpaSettings->includeTalpaOtherResultsSwitch; //if library allows Other Results
 
 			if($inLibraryB)
 			{
@@ -722,18 +723,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			$list[$field]['hasApplied'] = false;
 			$list[$field]['multiSelect'] = $facetConfig[$field]->multiSelect;
 
-//			$foundInstitution = false;
-//			$doInstitutionProcessing = false;
-//			$foundBranch = false;
-//			$doBranchProcessing = false;
-//
-//			//Marmot specific processing to do custom resorting of facets.
-//			if (strpos($field, 'owning_library') === 0 && isset($currentLibrary) && !is_null($currentLibrary)) {
-//				$doInstitutionProcessing = true;
-//			}
-//			if (strpos($field, 'owning_location') === 0 || strpos($field, 'available_at') === 0) {
-//				$doBranchProcessing = true;
-//			}
+
 			// Should we translate values for the current facet?
 			$translate = $facetConfig[$field]->translate;
 			$numValidRelatedLocations = 0;
@@ -1152,16 +1142,6 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 				'isPublicFacing' => true,
 				'inAttribute' => true,
 			]),
-//			'All Text' => translate([
-//				'text' => "All Text",
-//				'isPublicFacing' => true,
-//				'inAttribute' => true,
-//			]),
-//			'Keyword' => translate([
-//				'text' => "Keyword",
-//				'isPublicFacing' => true,
-//				'inAttribute' => true,
-//			])
 		];
 	}
 
@@ -1253,71 +1233,18 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		if (empty($selectedAvailableAtValues)) {
 			$selectedAvailableAtValues[] = '*';
 		}
-//		if (empty($selectedFormatCategoryValues)) {
-//			$selectedFormatCategoryValues[] = '*';
-//		}
-//		if (empty($selectedFormatValues)) {
-//			$selectedFormatValues[] = '*';
-//		}
-//		$allEditionFilters = [];
-//		$editionFiltersFormat = [];
-//		$editionFiltersFormatCategory = [];
-//		$editionFiltersFormatAvailability = [];
-//		$editionFiltersFormatAvailableAt = [];
+
 		foreach ($selectedAvailableAtValues as $selectedAvailableAtValue) {
 			$selectedAvailableAtValue = str_replace('(', '\(', $selectedAvailableAtValue);
 			$selectedAvailableAtValue = str_replace(')', '\)', $selectedAvailableAtValue);
-//			foreach ($selectedFormatCategoryValues as $selectedFormatCategoryValue) {
-//				foreach ($selectedFormatValues as $selectedFormatValue) {
-////					if ($selectedFormatValue != '*'){
-////						$editionFiltersFormat[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#*#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
-////					}
-////					if ($selectedFormatCategoryValue != '*'){
-////						$editionFiltersFormatCategory[] = str_replace(' ', '_', "edition_info:$solrScope#*#$selectedFormatValue#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
-////					}
-////					if ($this->selectedAvailabilityToggleValue != 'global'){
-////						$editionFiltersFormatAvailability[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#*#$selectedAvailableAtValue#");
-////					}
-////					if ($selectedAvailableAtValue != '*'){
-////						$editionFiltersFormatAvailableAt[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#$this->selectedAvailabilityToggleValue#*#");
-////					}
-//					$allEditionFilters[] = str_replace(' ', '_', "edition_info:$solrScope#$selectedFormatCategoryValue#$selectedFormatValue#$this->selectedAvailabilityToggleValue#$selectedAvailableAtValue#");
-//				}
-//			}
 		}
-//		if (count($allEditionFilters) > 0) {
-//			$allEditions = '(' . implode(' OR ', $allEditionFilters) . ')';
-//			$filterQuery[] = "{!tag=edition_info}$allEditions";
-//		}
-//		if (count($editionFiltersFormat) > 0) {
-//			$allFormatEditions = '(' . implode(' OR ', $editionFiltersFormat) . ')';
-//			$filterQuery[] = "{!tag=edition_info_format}$allFormatEditions";
-//		}
-//		if (count($editionFiltersFormatCategory) > 0) {
-//			$allFormatCategoryEditions = '(' . implode(' OR ', $editionFiltersFormatCategory) . ')';
-//			$filterQuery[] = "{!tag=edition_info_format_category}$allFormatCategoryEditions";
-//		}
-//		if (count($editionFiltersFormatAvailability) > 0) {
-//			$allAvailabilityEditions = '(' . implode(' OR ', $editionFiltersFormatAvailability) . ')';
-//			$filterQuery[] = "{!tag=edition_info_availability}$allAvailabilityEditions";
-//		}
-//		if (count($editionFiltersFormatAvailableAt) > 0) {
-//			$allAvailableAtEditions = '(' . implode(' OR ', $editionFiltersFormatAvailableAt) . ')';
-//			$filterQuery[] = "{!tag=edition_info_available_at}$allAvailableAtEditions";
-//		}
 
-		// If we are only searching one field use the DisMax handler
-		//    for that field. If left at null let solr take care of it
-//		if (count($search) == 1 && isset($search[0]['index'])) {
-//			$this->index = $search[0]['index'];
-//		}
 
 		// Build a list of facets we want from the index
 		$facetConfig = $this->getFacetConfig();
 
 		if ($recommendations && !empty($facetConfig)) {
 
-//			$facetSet['limit'] = $this->facetLimit;
 			foreach ($facetConfig as $facetField => $facetInfo) {
 				if ($facetInfo instanceof FacetSetting) {
 					$isMultiSelect = $facetInfo->multiSelect;
@@ -1377,9 +1304,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 			$this->facetOptions["f.local_time_since_added_$solrScope.facet.method"] = 'enum';
 			$this->facetOptions["f.owning_library.facet.method"] = 'enum';
 			$this->facetOptions["f.owning_location.facet.method"] = 'enum';
-//			foreach (SearchObject_GroupedWorkSearcher2::$scopedFields as $facetName) {
-//				$this->facetOptions["f.$facetName.facet.prefix"] = "$solrScope#";
-//			}
+
 		}
 		if (!empty($this->facetSearchTerm) && !empty($this->facetSearchField)) {
 			$this->facetOptions["f.{$this->facetSearchField}.facet.contains"] = $this->facetSearchTerm;
@@ -1388,7 +1313,7 @@ class SearchObject_TalpaSearcher extends SearchObject_BaseSearcher{
 		if (!empty($this->facetOptions)) {
 			$facetSet['additionalOptions'] = $this->facetOptions;
 		}
-//var_dump($facetSet);
+
 		return null;
 	}
 
