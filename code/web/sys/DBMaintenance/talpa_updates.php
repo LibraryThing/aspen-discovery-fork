@@ -30,7 +30,7 @@ function getTalpaUpdates() {
 				'ALTER TABLE library ADD COLUMN talpaSettingsId INT(11) DEFAULT -1',
 			],
 		],
-		'createIsbnMappingForTalpa' => [
+		'createWorkMappingForTalpa' => [
 			'title' => 'Create groupedWorkID mapping table for Talpa Search',
 			'description' => 'Allows Talpa to return grouped work results in Talpa Search module.',
 			'continueOnError' => true,
@@ -39,7 +39,8 @@ function getTalpaUpdates() {
 					id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 					groupedRecordPermanentId CHAR(40),
 					lt_workcode INT(11) UNSIGNED,
-					INDEX(`groupedRecordPermanentId`)
+					INDEX(`groupedRecordPermanentId`),
+					INDEX(`lt_workcode`)
 				) ENGINE = InnoDB"
 			]
 		]
