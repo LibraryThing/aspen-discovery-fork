@@ -8878,6 +8878,13 @@ a.placard-link {
   margin-left: 0;
   margin-right: 0;
 }
+.talpa_search_loading {
+  padding-right: 30px; /* Ensure space for the image */
+  background-image: url('/images/loading.gif'); /* Replace with your image */
+  background-repeat: no-repeat;
+  background-position: right 8px center; /* Align to the right */
+  background-size: 20px 20px; /* Adjust the size */
+}
 #horizontal-search-box #searchForm .row > div {
   margin-top: 4px;
 }

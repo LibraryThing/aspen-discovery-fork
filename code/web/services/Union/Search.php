@@ -131,6 +131,7 @@ class Union_Search extends ResultsAction {
 			$interface->assign('action', $action);
 			$this->searchResultsAction = new Series_Results();
 			$this->searchResultsAction->launch();
+		}
 		else {
 			if (isset($_REQUEST['searchIndex'])) {
 				$searchIndex = $_REQUEST['searchIndex'];

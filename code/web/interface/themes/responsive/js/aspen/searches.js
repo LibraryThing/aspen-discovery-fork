@@ -17,6 +17,17 @@ AspenDiscovery.Searches = (function(){
 				}).appendTo('#searchForm');
 			}
 		}
+
+		// talpa loading indicator, shown inline in #lookfor
+		$('#searchForm').on('submit', function(ev)
+		{
+			var searchTypeElement = $("#searchSource");
+			if(searchTypeElement.val() == 'talpa') {
+				$('#lookfor').addClass('talpa_search_loading');
+			}
+
+			this.submit();
+		})
 	});
 	return{
 		searchGroups: [],
@@ -216,6 +227,10 @@ AspenDiscovery.Searches = (function(){
 					catalogType = selectedSearchType.data("catalog_type");
 					hasAdvancedSearch = selectedSearchType.data("advanced_search");
 					advancedSearchLabel = selectedSearchType.data("advanced_search_label");
+
+					if(searchTypeElement.val() == 'talpa'){
+						var searchBox = $("#lookfor");
+					}
 				}
 			}
 			var url = "/Search/AJAX";
