@@ -19,10 +19,6 @@ class TalpaSettings extends DataObject {
 	public $includeTalpaOtherResultsSwitch;
 	public $talpaOtherResultsExplainerText;
 
-//	function getEncryptedFieldNames(): array {
-//		return ['talpaApiPassword'];
-//	}
-
 	public static function getObjectStructure($context = ''): array {
 		$buttonOptions = [
 			0 => 'None',

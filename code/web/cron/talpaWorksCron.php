@@ -3,6 +3,10 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../bootstrap_aspen.php';
 require_once ROOT_DIR . '/sys/Talpa/TalpaSettings.php';
 require_once ROOT_DIR . '/sys/SearchObject/TalpaSearcher.php';
+require_once ROOT_DIR . '/sys/Grouping/GroupedWork.php';
+require_once ROOT_DIR . '/RecordDrivers/GroupedWorkDriver.php';
+require_once ROOT_DIR . '/sys/Talpa/TalpaData.php';
+require_once ROOT_DIR . '/sys/ISBN.php';
 
 $talpaWorkAPI ='https://www.librarything.com/api_aspen_works.php';
 
@@ -51,10 +55,6 @@ $logger->log('FOUND '.count($permanent_ids).' permanent ID(s)', Logger::LOG_NOTI
 $retA = array();
 //Now, grab the correlating ISBNS for each grouped work ID
 foreach ($permanent_ids as $permanent_id) {
-	require_once ROOT_DIR . '/sys/Grouping/GroupedWork.php';
-	require_once ROOT_DIR . '/RecordDrivers/GroupedWorkDriver.php';
-	require_once ROOT_DIR . '/sys/Talpa/TalpaData.php';
-	require_once ROOT_DIR . '/sys/ISBN.php';
 
 
 	$groupedWork = new GroupedWork();
