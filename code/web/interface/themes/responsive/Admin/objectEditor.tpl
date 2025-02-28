@@ -91,24 +91,3 @@
 		{include file="DataObjectUtil/objectEditForm.tpl"}
 	</div>
 {/strip}
-<script type="text/javascript">  //TODO LAUREN Move to talpa.js
-	{literal}
-	function updateTalpaButtonFields() {
-		var buttonType = $("#talpaTryItButtonSelect option:selected").val();
-
-		if(buttonType==0)
-		{
-			$("#propertyRowtryThisSearchInTalpaText").hide();
-			$("#propertyRowtryThisSearchInTalpaSidebarSwitch").hide();
-			$("#propertyRowtryThisSearchInTalpaNoResultsSwitch").hide();
-		}
-		else
-			{
-				$("#propertyRowtryThisSearchInTalpaText").show();
-				$("#propertyRowtryThisSearchInTalpaSidebarSwitch").show();
-				$("#propertyRowtryThisSearchInTalpaNoResultsSwitch").show();
-			}
-	}
-
-	{/literal}
-</script>

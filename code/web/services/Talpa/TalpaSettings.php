@@ -74,9 +74,5 @@ class Talpa_TalpaSettings extends ObjectEditor {
 	function canView(): bool {
 		return UserAccount::userHasPermission('View Dashboards');
 	}
-
-//	function getInitializationJs(): string {
-//		return 'return AspenDiscovery.Talpa.updateTalpaButtonFields();';
-//	}
 }
 

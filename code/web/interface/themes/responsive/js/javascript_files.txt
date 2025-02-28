@@ -53,6 +53,7 @@ aspen/searches.js
 aspen/series.js
 aspen/sideloads.js
 aspen/summon.js
+aspen/talpa.js
 aspen/title-scroller.js
 aspen/web-builder.js
 aspen/websites.js

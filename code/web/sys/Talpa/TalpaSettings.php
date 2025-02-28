@@ -80,8 +80,7 @@ class TalpaSettings extends DataObject {
 						'label' => '"Try this search in Talpa" button',
 						'description' => 'Promote the use of Talpa within your catalog! Refer to your configuration documentation for visuals of the button options.',
 						'hideInLists' => true,
-		//				'onchange' => 'return AspenDiscovery.Talpa.updateTalpaButtonFields();', //TODO LAUREN
-						'onchange' => 'updateTalpaButtonFields()',
+						'onchange' => 'return AspenDiscovery.Talpa.updateTalpaButtonFields();',
 						'default' => 2,
 					],
 					'tryThisSearchInTalpaText' => [
