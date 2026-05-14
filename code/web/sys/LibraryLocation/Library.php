@@ -3729,6 +3729,7 @@ class Library extends DataObject {
 						'description' => 'The Syndetics Settings to use',
 						'default' => '-1',
 						'hideInLists' => true,
+						'forcesReindex' => true,
 					],
 					'loralSettingId' => [
 						'property' => 'loralSettingId',

@@ -2631,6 +2631,7 @@ AspenDiscovery.Admin = (function () {
 				$("#propertyRowhasFictionProfile").hide();
 				$("#propertyRowhasAuthorNotes").hide();
 				$("#propertyRowhasVideoClip").hide();
+				$("#propertyRowindexingHeader").show();
 			} else {
 				$("#propertyRowunboundAccountNumber").hide();
 				$("#propertyRowunboundInstanceNumber").hide();
@@ -2642,6 +2643,7 @@ AspenDiscovery.Admin = (function () {
 				$("#propertyRowhasFictionProfile").show();
 				$("#propertyRowhasAuthorNotes").show();
 				$("#propertyRowhasVideoClip").show();
+				$("#propertyRowindexingHeader").hide();
 			}
 		},
 		validateSublocationHoldPickupAreaAspen: function (sourceControl) {

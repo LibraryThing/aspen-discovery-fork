@@ -251,6 +251,15 @@
 		<field name="record_details" type="unchanged_string" indexed="false" stored="true" multiValued="true"/>
 		<field name="item_details" type="unchanged_string" indexed="false" stored="true" multiValued="true"/>
 		<dynamicField name="scoping_details_*" type="unchanged_string" indexed="false" stored="true" multiValued="true"/>
+
+		<!-- Syndetics Unbound enrichment (per-scope; written by SyndeticsUnboundProcessor) -->
+		<dynamicField name="su_summary_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
+		<dynamicField name="su_toc_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
+		<dynamicField name="su_tags_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
+		<dynamicField name="su_tags_facet_*" type="unchanged_string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+		<dynamicField name="su_review_text_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
+		<dynamicField name="su_review_source_*" type="unchanged_string" indexed="true" stored="false" multiValued="true" docValues="true"/>
+		<dynamicField name="su_review_date_*" type="date" indexed="true" stored="false" multiValued="true"/>
 		<!-- The popularity of a title in terms of circulation activity -->
 		<field name="popularity" type="integer" indexed="true" stored="false" default="0"/>
 		<field name="total_holds" type="integer" indexed="true" stored="false" default="0"/>
