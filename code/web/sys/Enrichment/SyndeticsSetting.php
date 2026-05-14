@@ -9,6 +9,10 @@ class SyndeticsSetting extends DataObject {
 	public $syndeticsKey;
 	public $unboundAccountNumber;
 	public $unboundInstanceNumber;
+	public $lastUpdateOfChangedRecords;
+	public $lastUpdateOfAllRecords;
+	public $runFullUpdate;
+	public $indexingEnabled;
 	public $hasSummary;
 	public $hasAvSummary;
 	public $hasAvProfile;
@@ -30,6 +34,8 @@ class SyndeticsSetting extends DataObject {
 			'hasFictionProfile',
 			'hasAuthorNotes',
 			'hasVideoClip',
+			'indexingEnabled',
+			'runFullUpdate',
 		];
 	}
 
@@ -133,6 +139,29 @@ class SyndeticsSetting extends DataObject {
 				'type' => 'checkbox',
 				'label' => 'Has Video Clip',
 				'description' => 'Whether or not the excerpt is available in the subscription',
+			],
+			'indexingHeader' => [
+				'property' => 'indexingHeader',
+				'type' => 'section',
+				'label' => 'Solr Indexing',
+				'hideInLists' => true,
+				'properties' => [
+					'indexingEnabled' => [
+						'property' => 'indexingEnabled',
+						'type' => 'checkbox',
+						'label' => 'Index SU enrichment into Solr',
+						'description' => 'When enabled, the SU exporter pulls enrichment for this account and indexes it into the grouped works Solr core so SU summaries, tables of contents, tags, and reviews become searchable for libraries on this subscription.',
+						'default' => 0,
+						'forcesReindex' => true,
+					],
+					'runFullUpdate' => [
+						'property' => 'runFullUpdate',
+						'type' => 'checkbox',
+						'label' => 'Run full update on next pass',
+						'description' => 'Triggers a full SU snapshot pull on the next exporter pass. Cleared automatically after a clean pass completes.',
+						'default' => 0,
+					],
+				],
 			],
 			'libraries' => [
 				'property' => 'libraries',
