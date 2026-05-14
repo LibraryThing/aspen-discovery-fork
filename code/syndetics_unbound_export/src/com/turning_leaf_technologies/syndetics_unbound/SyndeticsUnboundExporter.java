@@ -154,6 +154,134 @@ public class SyndeticsUnboundExporter {
 		}
 	}
 
+	/**
+	 * Processes a single record from the API response. Returns the identifier
+	 * pair "type:value" if the record was changed (and a reindex should be queued),
+	 * or null if the record was unchanged (checksum match) or skipped.
+	 */
+	private String processRecord(JSONObject record, HashMap<String, Long> existingChecksums) {
+		try {
+			String identifierType = record.getString("identifierType");
+			identifierType = identifierType.toLowerCase();
+			String rawIdentifier = record.getString("identifier");
+			String identifier = normalizeIdentifier(identifierType, rawIdentifier);
+			if (identifier == null) {
+				logEntry.incInvalidRecords();
+				return null;
+			}
+
+			String rawJson = record.toString();
+			long checksum = computeChecksum(rawJson);
+			String key = identifierType + ":" + identifier;
+			Long existing = existingChecksums.get(key);
+
+			if (existing != null && existing == checksum) {
+				PreparedStatement bumpStmt = aspenConn.prepareStatement(
+						"UPDATE syndetics_indexing_data SET lastFetched = ? WHERE syndeticsSettingId = ? AND identifierType = ? AND identifier = ?");
+				bumpStmt.setLong(1, passStartTime);
+				bumpStmt.setLong(2, settings.getSettingsId());
+				bumpStmt.setString(3, identifierType);
+				bumpStmt.setString(4, identifier);
+				bumpStmt.executeUpdate();
+				bumpStmt.close();
+				logEntry.incSkipped();
+				return null;
+			}
+
+			long workcode = record.optLong("workcode", 0);
+			boolean isNew = (existing == null);
+
+			PreparedStatement upsertStmt = aspenConn.prepareStatement(
+					"INSERT INTO syndetics_indexing_data " +
+					"(syndeticsSettingId, identifierType, identifier, workcode, rawChecksum, rawResponse, lastFetched, dateFirstDetected) " +
+					"VALUES (?, ?, ?, ?, ?, COMPRESS(?), ?, ?) " +
+					"ON DUPLICATE KEY UPDATE workcode = VALUES(workcode), rawChecksum = VALUES(rawChecksum), " +
+					"rawResponse = VALUES(rawResponse), lastFetched = VALUES(lastFetched)");
+			upsertStmt.setLong(1, settings.getSettingsId());
+			upsertStmt.setString(2, identifierType);
+			upsertStmt.setString(3, identifier);
+			if (workcode > 0) {
+				upsertStmt.setLong(4, workcode);
+			} else {
+				upsertStmt.setNull(4, java.sql.Types.BIGINT);
+			}
+			upsertStmt.setLong(5, checksum);
+			upsertStmt.setString(6, rawJson);
+			upsertStmt.setLong(7, passStartTime);
+			upsertStmt.setLong(8, passStartTime);
+			upsertStmt.executeUpdate();
+			upsertStmt.close();
+
+			existingChecksums.put(key, checksum);
+
+			if (isNew) {
+				logEntry.incAdded();
+			} else {
+				logEntry.incUpdated();
+			}
+			return key;
+		} catch (JSONException e) {
+			logEntry.incInvalidRecords();
+			logger.warn("Malformed SU record", e);
+			return null;
+		} catch (SQLException e) {
+			logEntry.incErrors("Database error processing SU record", e);
+			return null;
+		}
+	}
+
+	/**
+	 * Normalizes ISBN/UPC per spec: ISBN-10 is converted to ISBN-13; UPC strips non-digits.
+	 * Returns null if the identifier is unrecognized or invalid.
+	 */
+	private static String normalizeIdentifier(String type, String raw) {
+		if (raw == null || raw.isEmpty()) {
+			return null;
+		}
+		if ("isbn".equalsIgnoreCase(type)) {
+			String trimmed = raw.toUpperCase().replaceAll("[^0-9X]", "");
+			if (trimmed.length() == 13) {
+				return trimmed;
+			}
+			if (trimmed.length() == 10) {
+				return convertISBN10to13(trimmed);
+			}
+			return null;
+		} else if ("upc".equalsIgnoreCase(type)) {
+			String normalized = raw.replaceAll("[^0-9]", "");
+			return normalized.isEmpty() ? null : normalized;
+		}
+		return null;
+	}
+
+	private static String convertISBN10to13(String isbn10) {
+		if (isbn10.length() != 10) {
+			return null;
+		}
+		String isbnWithoutCheckDigit = isbn10.substring(0, 9);
+		if (!isbnWithoutCheckDigit.matches("\\d+")) {
+			return null;
+		}
+		String isbn = "978" + isbnWithoutCheckDigit;
+		int sumOfDigits = 0;
+		for (int i = 0; i < 12; i++) {
+			int multiplier = 1;
+			if (i % 2 == 1) {
+				multiplier = 3;
+			}
+			int curDigit = Integer.parseInt(Character.toString(isbn.charAt(i)));
+			sumOfDigits += multiplier * curDigit;
+		}
+		int modValue = sumOfDigits % 10;
+		int checksumDigit;
+		if (modValue == 0) {
+			checksumDigit = 0;
+		} else {
+			checksumDigit = 10 - modValue;
+		}
+		return isbn + checksumDigit;
+	}
+
 	private void handleAuthFailure(WebServiceResponse response) {
 	}
 }
