@@ -29,6 +29,12 @@ public class SyndeticsUnboundExporter {
 	private static final int FULL_PASS_DRAIN_INTERVAL = 1000;
 	private static final long STALE_CUTOFF_BUFFER_SECONDS = 60 * 60;
 
+	private static final int MAX_RETRIES_RATE_LIMIT = 5;
+	private static final int MAX_RETRIES_TRANSIENT = 3;
+	private static final long BACKOFF_TRANSIENT_MS = 120_000L;
+	private static final long BACKOFF_RATE_LIMIT_INITIAL_MS = 1000L;
+	private static final long BACKOFF_RATE_LIMIT_MAX_MS = 60_000L;
+
 	private final String serverName;
 	private final Connection aspenConn;
 	private final Ini configIni;
@@ -193,11 +199,48 @@ public class SyndeticsUnboundExporter {
 	}
 
 	/**
-	 * Calls the SU API for one batch of records. Returns the parsed response or null on
-	 * persistent failure. The caller decides whether to abort the pass on null.
-	 * Pagination: pass nextCursor from the previous response; pass null for the first call.
+	 * Fetches a batch with retry on transient errors. Retry policy differs by HTTP code:
+	 * 429 → exponential backoff (1s, 2s, 4s, 8s, 16s; capped at 60s), up to 5 retries.
+	 * 503/504 → fixed 2-minute backoff, up to 3 retries.
+	 * Persistent failures return null. Pagination: pass nextCursor from the previous response; null for first call.
 	 */
 	private JSONObject fetchBatch(boolean fullSnapshot, String cursor) {
+		int retries = 0;
+		while (true) {
+			JSONObject result = fetchBatchOnce(fullSnapshot, cursor);
+			if (result != null) {
+				return result;
+			}
+			if (!shouldRetry()) {
+				return null;
+			}
+			int maxRetries = (lastResponseCode == 429) ? MAX_RETRIES_RATE_LIMIT : MAX_RETRIES_TRANSIENT;
+			if (retries >= maxRetries) {
+				logEntry.incErrors("Retry exhausted on transient error (HTTP " + lastResponseCode + ") after " + maxRetries + " retries");
+				return null;
+			}
+			long backoffMs = (lastResponseCode == 429)
+					? Math.min(BACKOFF_RATE_LIMIT_INITIAL_MS * (1L << retries), BACKOFF_RATE_LIMIT_MAX_MS)
+					: BACKOFF_TRANSIENT_MS;
+			retries++;
+			logEntry.addNote("Retrying fetch after HTTP " + lastResponseCode + " (retry " + retries + "/" + maxRetries + ", waiting " + backoffMs + "ms)");
+			try {
+				Thread.sleep(backoffMs);
+			} catch (InterruptedException e) {
+				logEntry.addNote("Fetch retry interrupted; pass aborting");
+				Thread.currentThread().interrupt();
+				return null;
+			}
+		}
+	}
+
+	private int lastResponseCode = 200;
+
+	private boolean shouldRetry() {
+		return lastResponseCode == 429 || lastResponseCode == 503 || lastResponseCode == 504;
+	}
+
+	private JSONObject fetchBatchOnce(boolean fullSnapshot, String cursor) {
 		StringBuilder url = new StringBuilder(SU_API_BASE);
 		url.append("?syndeticsKey=").append(URLEncoder.encode(settings.getSyndeticsKey(), StandardCharsets.UTF_8));
 		url.append("&a_id=").append(settings.getUnboundAccountNumber());
@@ -212,14 +255,16 @@ public class SyndeticsUnboundExporter {
 		headers.put("Accept", "application/json");
 
 		WebServiceResponse response = NetworkUtils.getURL(url.toString(), logger, headers);
+		lastResponseCode = response.getResponseCode();
 		if (!response.isSuccess()) {
 			int code = response.getResponseCode();
 			if (code == 401 || code == 403) {
+				logEntry.incErrors("SU API auth failure (HTTP " + code + ")");
 				handleAuthFailure(response);
 			} else if (code == 429) {
-				logEntry.incErrors("Rate-limited by SU API (HTTP 429)");
+				logger.warn("Rate-limited by SU API (HTTP 429)");
 			} else if (code == 503 || code == 504) {
-				logEntry.incErrors("Transient SU API error " + code);
+				logger.warn("Transient SU API error " + code);
 			} else {
 				logEntry.incErrors("Persistent SU API error " + code + ": " + response.getMessage());
 			}
