@@ -204,7 +204,41 @@ class SyndeticsSetting extends DataObject {
 		}
 	}
 
+	/**
+	 * When indexingEnabled = 1 is being saved, require a positive unboundAccountNumber
+	 * and reject saves whose account number is already in use by another indexed row.
+	 * a_id is the canonical per-library SU identifier; two settings rows must not both
+	 * index the same account or they will race over the same Solr enrichment data.
+	 */
+	private function validateUnboundAccountForIndexing(): bool {
+		if (empty($this->indexingEnabled)) {
+			return true;
+		}
+		if (empty($this->syndeticsUnbound)) {
+			$this->setLastError("'Index SU enrichment into Solr' can only be enabled on Syndetics Unbound subscriptions. Check 'Syndetics Unbound' first.");
+			return false;
+		}
+		if (empty($this->unboundAccountNumber) || $this->unboundAccountNumber <= 0) {
+			$this->setLastError("Unbound Account Number is required when 'Index SU enrichment into Solr' is enabled.");
+			return false;
+		}
+		$duplicate = new SyndeticsSetting();
+		$duplicate->indexingEnabled = 1;
+		$duplicate->unboundAccountNumber = $this->unboundAccountNumber;
+		if (!empty($this->id)) {
+			$duplicate->whereAdd('id != ' . (int)$this->id);
+		}
+		if ($duplicate->find(true)) {
+			$this->setLastError("Another Syndetics Unbound subscription (\"" . $duplicate->name . "\") is already indexing account number " . $this->unboundAccountNumber . " into Solr. Each account can only be indexed once.");
+			return false;
+		}
+		return true;
+	}
+
 	public function update(string $context = '') : bool|int {
+		if (!$this->validateUnboundAccountForIndexing()) {
+			return false;
+		}
 		$ret = parent::update();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
@@ -213,6 +247,9 @@ class SyndeticsSetting extends DataObject {
 	}
 
 	public function insert(string $context = '') : int|bool {
+		if (!$this->validateUnboundAccountForIndexing()) {
+			return false;
+		}
 		$ret = parent::insert();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
