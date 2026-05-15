@@ -118,9 +118,11 @@ public class SyndeticsUnboundExporter {
 		logEntry.addNote("Processed " + numProcessed + " records");
 
 		if (!logEntry.hasErrors()) {
-			updateCursorOnSuccess(fullSnapshot);
 			if (fullSnapshot) {
-				runStalePurge(existingChecksums);
+				runStalePurge();
+			}
+			if (!logEntry.hasErrors()) {
+				updateCursorOnSuccess(fullSnapshot);
 			}
 		}
 
@@ -424,7 +426,55 @@ public class SyndeticsUnboundExporter {
 		}
 	}
 
-	private void runStalePurge(HashMap<String, Long> existingChecksums) {
+	/**
+	 * Stale row purge: only runs at the end of a CLEAN full-snapshot pass.
+	 * Deletes any cache rows whose lastFetched is older than passStartTime - 1 hour buffer.
+	 * Each affected grouped work gets reindexed to clear stale enrichment.
+	 */
+	private void runStalePurge() {
+		long staleCutoff = passStartTime - STALE_CUTOFF_BUFFER_SECONDS;
+		HashSet<String> reindexQueue = new HashSet<>();
+		try {
+			PreparedStatement findStmt = aspenConn.prepareStatement(
+					"SELECT identifierType, identifier FROM syndetics_indexing_data WHERE syndeticsSettingId = ? AND lastFetched < ?");
+			findStmt.setLong(1, settings.getSettingsId());
+			findStmt.setLong(2, staleCutoff);
+			ResultSet rs = findStmt.executeQuery();
+			int staleCount = 0;
+			while (rs.next()) {
+				String type = rs.getString("identifierType");
+				String id = rs.getString("identifier");
+				reindexQueue.addAll(findGroupedWorksForIdentifier(type, id));
+				staleCount++;
+			}
+			rs.close();
+			findStmt.close();
+
+			if (staleCount == 0) {
+				logEntry.addNote("Stale purge: no stale rows found");
+				return;
+			}
+
+			if (logEntry.hasErrors()) {
+				logEntry.addNote("Stale purge: aborting before delete — grouped-work resolution failed for one or more identifiers; next pass will retry");
+				return;
+			}
+
+			PreparedStatement deleteStmt = aspenConn.prepareStatement(
+					"DELETE FROM syndetics_indexing_data WHERE syndeticsSettingId = ? AND lastFetched < ?");
+			deleteStmt.setLong(1, settings.getSettingsId());
+			deleteStmt.setLong(2, staleCutoff);
+			int deleted = deleteStmt.executeUpdate();
+			deleteStmt.close();
+
+			for (int i = 0; i < deleted; i++) {
+				logEntry.incDeleted();
+			}
+			logEntry.addNote("Stale purge: deleted " + deleted + " rows, reindexing " + reindexQueue.size() + " grouped works");
+			drainReindexQueue(reindexQueue);
+		} catch (SQLException e) {
+			logEntry.incErrors("Error during stale row purge", e);
+		}
 	}
 
 	private boolean runCleanupIfNeeded() {
