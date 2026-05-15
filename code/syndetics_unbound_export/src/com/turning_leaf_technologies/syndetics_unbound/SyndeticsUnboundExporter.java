@@ -5,6 +5,7 @@ import com.turning_leaf_technologies.net.WebServiceResponse;
 import org.apache.logging.log4j.Logger;
 import org.aspen_discovery.reindexer.GroupedWorkIndexer;
 import org.ini4j.Ini;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -14,8 +15,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.zip.CRC32;
 
 public class SyndeticsUnboundExporter {
@@ -45,7 +49,82 @@ public class SyndeticsUnboundExporter {
 	}
 
 	public boolean exportSyndeticsUnboundData() {
-		return false;
+		if (!settings.isIndexingEnabled()) {
+			return runCleanupIfNeeded();
+		}
+
+		if (!validateCredentials()) {
+			return false;
+		}
+
+		boolean fullSnapshot = settings.isRunFullUpdate();
+		logEntry.addNote(fullSnapshot ? "Starting full snapshot pass" : "Starting incremental pass since " + settings.getLastUpdateOfChangedRecords());
+		logEntry.saveResults();
+
+		HashMap<String, Long> existingChecksums;
+		try {
+			existingChecksums = loadExistingChecksums();
+		} catch (SQLException e) {
+			logEntry.incErrors("Could not load existing checksums", e);
+			return false;
+		}
+		logger.info("Loaded " + existingChecksums.size() + " existing checksums");
+
+		HashSet<String> changedGroupedWorks = new HashSet<>();
+		int numProcessed = 0;
+		String cursor = null;
+		boolean firstBatch = true;
+
+		do {
+			JSONObject response = fetchBatch(fullSnapshot, cursor);
+			if (response == null) {
+				// fetchBatch already logged the error. Abort the pass — cursor preserved.
+				return numProcessed > 0;
+			}
+			if (firstBatch) {
+				if (response.has("totalEstimated")) {
+					logEntry.incNumProducts(response.getInt("totalEstimated"));
+					logEntry.saveResults();
+				}
+				firstBatch = false;
+			}
+			JSONArray records = response.optJSONArray("records");
+			if (records != null) {
+				for (int i = 0; i < records.length(); i++) {
+					JSONObject record = records.getJSONObject(i);
+					String changedKey = processRecord(record, existingChecksums);
+					numProcessed++;
+					if (changedKey != null) {
+						int colonIdx = changedKey.indexOf(':');
+						String idType = changedKey.substring(0, colonIdx);
+						String idValue = changedKey.substring(colonIdx + 1);
+						for (String groupedWorkId : findGroupedWorksForIdentifier(idType, idValue)) {
+							changedGroupedWorks.add(groupedWorkId);
+						}
+					}
+					if (fullSnapshot && changedGroupedWorks.size() >= FULL_PASS_DRAIN_INTERVAL) {
+						drainReindexQueue(changedGroupedWorks);
+					}
+					if (numProcessed % 100 == 0) {
+						logEntry.saveResults();
+					}
+				}
+			}
+			cursor = response.optString("nextCursor", null);
+		} while (cursor != null && !cursor.isEmpty());
+
+		drainReindexQueue(changedGroupedWorks);
+
+		logEntry.addNote("Processed " + numProcessed + " records");
+
+		if (!logEntry.hasErrors()) {
+			updateCursorOnSuccess(fullSnapshot);
+			if (fullSnapshot) {
+				runStalePurge(existingChecksums);
+			}
+		}
+
+		return numProcessed > 0;
 	}
 
 	public void exporterCleanUp() {
@@ -166,7 +245,7 @@ public class SyndeticsUnboundExporter {
 			String rawIdentifier = record.getString("identifier");
 			String identifier = normalizeIdentifier(identifierType, rawIdentifier);
 			if (identifier == null) {
-				logEntry.incInvalidRecords();
+				logEntry.incInvalidRecords(identifierType + ":" + rawIdentifier);
 				return null;
 			}
 
@@ -221,7 +300,7 @@ public class SyndeticsUnboundExporter {
 			}
 			return key;
 		} catch (JSONException e) {
-			logEntry.incInvalidRecords();
+			logEntry.incInvalidRecords("(malformed SU record)");
 			logger.warn("Malformed SU record", e);
 			return null;
 		} catch (SQLException e) {
@@ -280,6 +359,76 @@ public class SyndeticsUnboundExporter {
 			checksumDigit = 10 - modValue;
 		}
 		return isbn + checksumDigit;
+	}
+
+	/**
+	 * Finds grouped works that contain the given identifier as a primary identifier.
+	 * Used to queue reindex on the affected grouped works.
+	 */
+	private List<String> findGroupedWorksForIdentifier(String identifierType, String identifier) {
+		List<String> result = new ArrayList<>();
+		if (identifier == null) {
+			return result;
+		}
+		try {
+			PreparedStatement stmt = aspenConn.prepareStatement(
+					"SELECT DISTINCT gw.permanent_id FROM grouped_work gw " +
+					"JOIN grouped_work_primary_identifiers gwpi ON gw.id = gwpi.grouped_work_id " +
+					"WHERE gwpi.type = ? AND gwpi.identifier = ?");
+			stmt.setString(1, identifierType);
+			stmt.setString(2, identifier);
+			ResultSet rs = stmt.executeQuery();
+			while (rs.next()) {
+				result.add(rs.getString("permanent_id"));
+			}
+			rs.close();
+			stmt.close();
+		} catch (SQLException e) {
+			logEntry.incErrors("Could not resolve grouped works for " + identifierType + ":" + identifier, e);
+		}
+		return result;
+	}
+
+	/**
+	 * Drains the reindex queue: processes each unique grouped work ID and commits to Solr.
+	 */
+	private void drainReindexQueue(HashSet<String> queue) {
+		if (queue.isEmpty()) {
+			return;
+		}
+		GroupedWorkIndexer indexer = getGroupedWorkIndexer();
+		for (String groupedWorkId : queue) {
+			indexer.processGroupedWork(groupedWorkId);
+		}
+		indexer.commitChanges();
+		queue.clear();
+	}
+
+	private void updateCursorOnSuccess(boolean fullSnapshot) {
+		try {
+			String sql = fullSnapshot
+					? "UPDATE syndetics_settings SET lastUpdateOfAllRecords = ?, lastUpdateOfChangedRecords = ?, runFullUpdate = 0 WHERE id = ?"
+					: "UPDATE syndetics_settings SET lastUpdateOfChangedRecords = ? WHERE id = ?";
+			PreparedStatement stmt = aspenConn.prepareStatement(sql);
+			stmt.setLong(1, passStartTime);
+			if (fullSnapshot) {
+				stmt.setLong(2, passStartTime);
+				stmt.setLong(3, settings.getSettingsId());
+			} else {
+				stmt.setLong(2, settings.getSettingsId());
+			}
+			stmt.executeUpdate();
+			stmt.close();
+		} catch (SQLException e) {
+			logEntry.incErrors("Could not update cursor on success", e);
+		}
+	}
+
+	private void runStalePurge(HashMap<String, Long> existingChecksums) {
+	}
+
+	private boolean runCleanupIfNeeded() {
+		return false;
 	}
 
 	private void handleAuthFailure(WebServiceResponse response) {
