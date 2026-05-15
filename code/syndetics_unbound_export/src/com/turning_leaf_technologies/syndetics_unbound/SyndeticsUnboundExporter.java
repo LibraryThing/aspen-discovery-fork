@@ -259,7 +259,6 @@ public class SyndeticsUnboundExporter {
 		if (!response.isSuccess()) {
 			int code = response.getResponseCode();
 			if (code == 401 || code == 403) {
-				logEntry.incErrors("SU API auth failure (HTTP " + code + ")");
 				handleAuthFailure(response);
 			} else if (code == 429) {
 				logger.warn("Rate-limited by SU API (HTTP 429)");
@@ -526,6 +525,77 @@ public class SyndeticsUnboundExporter {
 		return false;
 	}
 
+	private boolean revocationDetected = false;
+
+	/**
+	 * On 401/403, check for the explicit revocation marker in the response body.
+	 * If present, trigger immediate cleanup. If absent, treat as generic auth failure
+	 * and preserve the cache pending admin investigation. Revocation itself is a
+	 * legitimate terminal signal (not an operational error) and is logged via addNote.
+	 */
 	private void handleAuthFailure(WebServiceResponse response) {
+		String body = response.getMessage();
+		if (body != null) {
+			try {
+				JSONObject errBody = new JSONObject(body);
+				if (errBody.has("error") && "subscription_revoked".equals(errBody.getString("error"))) {
+					logEntry.addNote("SU API returned subscription_revoked — cleaning up cache");
+					revocationDetected = true;
+					runCleanup();
+					return;
+				}
+			} catch (JSONException ignore) {
+			}
+		}
+		logEntry.incErrors("SU API auth failure (HTTP " + response.getResponseCode() + "). Credentials may be invalid; cache preserved pending admin investigation.");
+	}
+
+	/**
+	 * Deletes all cache rows for this settings ID and queues affected grouped works
+	 * for reindex. When triggered by revocation, also flips indexingEnabled to 0
+	 * to stop further fetch attempts against revoked credentials.
+	 */
+	private void runCleanup() {
+		HashSet<String> reindexQueue = new HashSet<>();
+		try {
+			PreparedStatement findStmt = aspenConn.prepareStatement(
+					"SELECT identifierType, identifier FROM syndetics_indexing_data WHERE syndeticsSettingId = ?");
+			findStmt.setLong(1, settings.getSettingsId());
+			ResultSet rs = findStmt.executeQuery();
+			while (rs.next()) {
+				reindexQueue.addAll(findGroupedWorksForIdentifier(rs.getString("identifierType"), rs.getString("identifier")));
+			}
+			rs.close();
+			findStmt.close();
+
+			if (logEntry.hasErrors()) {
+				logEntry.addNote("Cleanup: aborting before delete — grouped-work resolution failed for one or more identifiers; next pass will retry");
+				return;
+			}
+
+			PreparedStatement deleteStmt = aspenConn.prepareStatement(
+					"DELETE FROM syndetics_indexing_data WHERE syndeticsSettingId = ?");
+			deleteStmt.setLong(1, settings.getSettingsId());
+			int deleted = deleteStmt.executeUpdate();
+			deleteStmt.close();
+
+			for (int i = 0; i < deleted; i++) {
+				logEntry.incDeleted();
+			}
+			logEntry.addNote("Cleanup: deleted " + deleted + " rows, reindexing " + reindexQueue.size() + " grouped works");
+
+			if (revocationDetected) {
+				PreparedStatement disableStmt = aspenConn.prepareStatement(
+						"UPDATE syndetics_settings SET indexingEnabled = 0 WHERE id = ?");
+				disableStmt.setLong(1, settings.getSettingsId());
+				disableStmt.executeUpdate();
+				disableStmt.close();
+				logEntry.addNote("Set indexingEnabled = 0 on settings row " + settings.getSettingsId() + " due to subscription_revoked signal");
+			}
+
+			drainReindexQueue(reindexQueue);
+		} catch (SQLException e) {
+			logEntry.incErrors("Error during cleanup", e);
+		}
 	}
 }
