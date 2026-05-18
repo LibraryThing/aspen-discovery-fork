@@ -521,8 +521,36 @@ public class SyndeticsUnboundExporter {
 		}
 	}
 
+	/**
+	 * Called at pass start when indexingEnabled = 0. Checks whether there is residual
+	 * cache data to clear (admin recently flipped the flag off) and runs cleanup if so.
+	 * Returns true if cleanup ran, false if there was nothing to do.
+	 */
 	private boolean runCleanupIfNeeded() {
-		return false;
+		try {
+			PreparedStatement countStmt = aspenConn.prepareStatement(
+					"SELECT COUNT(*) FROM syndetics_indexing_data WHERE syndeticsSettingId = ?");
+			countStmt.setLong(1, settings.getSettingsId());
+			ResultSet rs = countStmt.executeQuery();
+			int rowCount = 0;
+			if (rs.next()) {
+				rowCount = rs.getInt(1);
+			}
+			rs.close();
+			countStmt.close();
+
+			if (rowCount == 0) {
+				return false;
+			}
+
+			logEntry.addNote("indexingEnabled = 0, found " + rowCount + " stale cache rows — running cleanup");
+			logEntry.saveResults();
+			runCleanup();
+			return true;
+		} catch (SQLException e) {
+			logEntry.incErrors("Error checking for cleanup-needed state", e);
+			return false;
+		}
 	}
 
 	private boolean revocationDetected = false;
