@@ -135,6 +135,54 @@ public class SyndeticsUnboundExporter {
 		return numProcessed > 0;
 	}
 
+	/**
+	 * Single-record mode: fetch one identifier from the SU API and process it through the
+	 * same upsert + reindex logic the batch pass uses. Triggered by the admin "Reload" form.
+	 * Returns true if the record was fetched and processed; false on invalid identifier,
+	 * fetch failure, or processing error.
+	 */
+	public boolean exportSingleRecord(String identifierType, String identifier) {
+		if (!validateCredentials()) {
+			return false;
+		}
+		String normalized = normalizeIdentifier(identifierType, identifier);
+		if (normalized == null) {
+			logEntry.incInvalidRecords(identifierType + ":" + identifier);
+			logEntry.incErrors("Invalid identifier: " + identifierType + ":" + identifier);
+			return false;
+		}
+		StringBuilder url = new StringBuilder(SU_API_BASE);
+		url.append("?syndeticsKey=").append(URLEncoder.encode(settings.getSyndeticsKey(), StandardCharsets.UTF_8));
+		url.append("&a_id=").append(settings.getUnboundAccountNumber());
+		url.append("&identifierType=").append(identifierType);
+		url.append("&identifier=").append(URLEncoder.encode(normalized, StandardCharsets.UTF_8));
+
+		HashMap<String, String> headers = new HashMap<>();
+		headers.put("Accept", "application/json");
+		WebServiceResponse response = NetworkUtils.getURL(url.toString(), logger, headers);
+		if (!response.isSuccess()) {
+			logEntry.incErrors("Single-record fetch failed: " + response.getResponseCode() + " " + response.getMessage());
+			return false;
+		}
+		try {
+			JSONObject record = new JSONObject(response.getMessage());
+			HashMap<String, Long> existing = loadExistingChecksums();
+			String changed = processRecord(record, existing);
+			if (changed != null) {
+				int colonIdx = changed.indexOf(':');
+				String idType = changed.substring(0, colonIdx);
+				String idValue = changed.substring(colonIdx + 1);
+				HashSet<String> queue = new HashSet<>(findGroupedWorksForIdentifier(idType, idValue));
+				drainReindexQueue(queue);
+			}
+			logEntry.incNumProducts(1);
+			return true;
+		} catch (Exception e) {
+			logEntry.incErrors("Could not process single-record response", e);
+			return false;
+		}
+	}
+
 	public void exporterCleanUp() {
 		if (groupedWorkIndexer != null) {
 			groupedWorkIndexer.finishIndexingFromExtract(logEntry);
