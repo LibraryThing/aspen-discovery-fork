@@ -42,7 +42,7 @@ function getUpdates26_06_00(): array {
 		//other
 		'syndetics_indexing_v1' => [
 			'title' => 'Syndetics Unbound indexing schema',
-			'description' => 'Add indexing-related columns to syndetics_settings; create syndetics_indexing_data cache and syndetics_indexing_log audit tables.',
+			'description' => 'Add indexing-related columns to syndetics_settings; create syndetics_indexing_data cache, and syndetics_indexing_log audit table.',
 			'continueOnError' => false,
 			'sql' => [
 				"ALTER TABLE syndetics_settings
@@ -63,7 +63,8 @@ function getUpdates26_06_00(): array {
 					PRIMARY KEY (id),
 					UNIQUE KEY scope_identifier (syndeticsSettingId, identifierType, identifier),
 					KEY identifier (identifier),
-					KEY lastFetched (lastFetched)
+					KEY lastFetched (lastFetched),
+					CONSTRAINT fk_syndetics_indexing_settings FOREIGN KEY (syndeticsSettingId) REFERENCES syndetics_settings(id) ON DELETE CASCADE
 				) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci",
 				"CREATE TABLE IF NOT EXISTS syndetics_indexing_log (
 					id INT(11) NOT NULL AUTO_INCREMENT,

@@ -235,13 +235,88 @@ class SyndeticsSetting extends DataObject {
 		return true;
 	}
 
+	/**
+	 * Returns true if the row already exists with a previous unboundAccountNumber
+	 * that differs from the value currently on $this. Used by update() to trigger
+	 * cache invalidation when an admin changes the SU account on a settings row.
+	 */
+	private function detectAccountNumberChange(): bool {
+		if (empty($this->id)) {
+			return false;
+		}
+		$previous = new SyndeticsSetting();
+		$previous->id = $this->id;
+		if (!$previous->find(true)) {
+			return false;
+		}
+		return ((int)$previous->unboundAccountNumber !== (int)$this->unboundAccountNumber)
+			&& (int)$previous->unboundAccountNumber > 0;
+	}
+
+	private function findGroupedWorksFromCache(): array {
+		global $aspen_db;
+		$stmt = $aspen_db->prepare(
+			"SELECT DISTINCT gw.permanent_id
+			 FROM grouped_work gw
+			 JOIN grouped_work_primary_identifiers gwpi ON gw.id = gwpi.grouped_work_id
+			 JOIN syndetics_indexing_data sid
+			   ON gwpi.type = sid.identifierType AND gwpi.identifier = sid.identifier
+			 WHERE sid.syndeticsSettingId = ?"
+		);
+		$stmt->execute([$this->id]);
+		$ids = [];
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+			$ids[] = $row['permanent_id'];
+		}
+		return $ids;
+	}
+
+	private function wipeCacheForSettingsId(): void {
+		global $aspen_db;
+		$stmt = $aspen_db->prepare("DELETE FROM syndetics_indexing_data WHERE syndeticsSettingId = ?");
+		$stmt->execute([$this->id]);
+	}
+
+	private function queueGroupedWorksForReindex(array $permanentIds): void {
+		if (empty($permanentIds)) {
+			return;
+		}
+		require_once ROOT_DIR . '/sys/Grouping/GroupedWork.php';
+		foreach ($permanentIds as $permanentId) {
+			$gw = new GroupedWork();
+			$gw->permanent_id = $permanentId;
+			$gw->forceReindex();
+		}
+	}
+
+	/**
+	 * Reset library.syndeticsSettingId to the "no binding" sentinel (-1) for any
+	 * library currently bound to this settings row, so deletion doesn't leave the
+	 * Reviews / BookCoverProcessor / GoDeeperData lookups pointing at a dead id.
+	 */
+	private function clearLibraryBindings(): void {
+		global $aspen_db;
+		$stmt = $aspen_db->prepare("UPDATE library SET syndeticsSettingId = -1 WHERE syndeticsSettingId = ?");
+		$stmt->execute([$this->id]);
+	}
+
 	public function update(string $context = '') : bool|int {
 		if (!$this->validateUnboundAccountForIndexing()) {
 			return false;
 		}
+		$accountChanged = $this->detectAccountNumberChange();
+		$affectedGroupedWorks = $accountChanged ? $this->findGroupedWorksFromCache() : [];
+		if ($accountChanged) {
+			$this->lastUpdateOfChangedRecords = 0;
+			$this->lastUpdateOfAllRecords = 0;
+		}
 		$ret = parent::update();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
+			if ($accountChanged) {
+				$this->wipeCacheForSettingsId();
+				$this->queueGroupedWorksForReindex($affectedGroupedWorks);
+			}
 		}
 		return $ret;
 	}
@@ -253,6 +328,20 @@ class SyndeticsSetting extends DataObject {
 		$ret = parent::insert();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
+		}
+		return $ret;
+	}
+
+	public function delete(bool $useWhere = false, bool $hardDelete = false) : bool|int {
+		$affectedGroupedWorks = (!$useWhere && !empty($this->id))
+			? $this->findGroupedWorksFromCache()
+			: [];
+		if (!$useWhere && !empty($this->id)) {
+			$this->clearLibraryBindings();
+		}
+		$ret = parent::delete($useWhere, $hardDelete);
+		if ($ret !== FALSE) {
+			$this->queueGroupedWorksForReindex($affectedGroupedWorks);
 		}
 		return $ret;
 	}
