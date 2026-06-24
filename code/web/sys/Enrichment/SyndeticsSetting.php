@@ -9,10 +9,13 @@ class SyndeticsSetting extends DataObject {
 	public $syndeticsKey;
 	public $unboundAccountNumber;
 	public $unboundInstanceNumber;
-	public $lastUpdateOfChangedRecords;
-	public $lastUpdateOfAllRecords;
-	public $runFullUpdate;
 	public $indexingEnabled;
+	public $lastSeenLtSeedVersion;
+	public $lastSeenLtSeedFetchedAt;
+	public $lastSeenLtLibraryVersion;
+	public $lastSeenLtLibraryFetchedAt;
+	public $classicEnrichmentCursor;
+	public $classicEnrichmentLastFullPassAt;
 	public $hasSummary;
 	public $hasAvSummary;
 	public $hasAvProfile;
@@ -35,7 +38,6 @@ class SyndeticsSetting extends DataObject {
 			'hasAuthorNotes',
 			'hasVideoClip',
 			'indexingEnabled',
-			'runFullUpdate',
 		];
 	}
 
@@ -150,16 +152,9 @@ class SyndeticsSetting extends DataObject {
 						'property' => 'indexingEnabled',
 						'type' => 'checkbox',
 						'label' => 'Index SU enrichment into Solr',
-						'description' => 'When enabled, the SU exporter pulls enrichment for this account and indexes it into the grouped works Solr core so SU summaries, tables of contents, tags, and reviews become searchable for libraries on this subscription.',
+						'description' => 'When enabled, the SU enrichment crons pull tag data from the LibraryThing feed and summary/TOC/review data from the classic Syndetics service for this account, and index both into the grouped works Solr core so SU enrichment becomes searchable for libraries on this subscription.',
 						'default' => 0,
 						'forcesReindex' => true,
-					],
-					'runFullUpdate' => [
-						'property' => 'runFullUpdate',
-						'type' => 'checkbox',
-						'label' => 'Run full update on next pass',
-						'description' => 'Triggers a full SU snapshot pull on the next exporter pass. Cleared automatically after a clean pass completes.',
-						'default' => 0,
 					],
 				],
 			],
@@ -253,40 +248,19 @@ class SyndeticsSetting extends DataObject {
 			&& (int)$previous->unboundAccountNumber > 0;
 	}
 
-	private function findGroupedWorksFromCache(): array {
-		global $aspen_db;
-		$stmt = $aspen_db->prepare(
-			"SELECT DISTINCT gw.permanent_id
-			 FROM grouped_work gw
-			 JOIN grouped_work_primary_identifiers gwpi ON gw.id = gwpi.grouped_work_id
-			 JOIN syndetics_indexing_data sid
-			   ON gwpi.type = sid.identifierType AND gwpi.identifier = sid.identifier
-			 WHERE sid.syndeticsSettingId = ?"
-		);
-		$stmt->execute([$this->id]);
-		$ids = [];
-		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-			$ids[] = $row['permanent_id'];
-		}
-		return $ids;
-	}
-
 	private function wipeCacheForSettingsId(): void {
 		global $aspen_db;
 		$stmt = $aspen_db->prepare("DELETE FROM syndetics_indexing_data WHERE syndeticsSettingId = ?");
 		$stmt->execute([$this->id]);
 	}
 
-	private function queueGroupedWorksForReindex(array $permanentIds): void {
-		if (empty($permanentIds)) {
-			return;
-		}
-		require_once ROOT_DIR . '/sys/Grouping/GroupedWork.php';
-		foreach ($permanentIds as $permanentId) {
-			$gw = new GroupedWork();
-			$gw->permanent_id = $permanentId;
-			$gw->forceReindex();
-		}
+	private function resetPerFeedCursors(): void {
+		$this->lastSeenLtSeedVersion = null;
+		$this->lastSeenLtSeedFetchedAt = null;
+		$this->lastSeenLtLibraryVersion = null;
+		$this->lastSeenLtLibraryFetchedAt = null;
+		$this->classicEnrichmentCursor = null;
+		$this->classicEnrichmentLastFullPassAt = null;
 	}
 
 	/**
@@ -300,22 +274,33 @@ class SyndeticsSetting extends DataObject {
 		$stmt->execute([$this->id]);
 	}
 
+	/**
+	 * Aspen has no "by-ISBN" lookup that would let us identify only the grouped
+	 * works whose Solr docs hold stale SU enrichment for this settings row, so
+	 * we fall back to the catalog-wide reindex flag that the `forcesReindex`
+	 * mechanism on form fields already uses. Account changes and deletes are
+	 * rare admin events; over-reindexing is cheaper than maintaining an ISBN
+	 * to grouped-work side table.
+	 */
+	private function forceCatalogReindex(string $reason): void {
+		require_once ROOT_DIR . '/sys/SystemVariables.php';
+		SystemVariables::forceNightlyIndex("SyndeticsSetting $this->id: $reason");
+	}
+
 	public function update(string $context = '') : bool|int {
 		if (!$this->validateUnboundAccountForIndexing()) {
 			return false;
 		}
 		$accountChanged = $this->detectAccountNumberChange();
-		$affectedGroupedWorks = $accountChanged ? $this->findGroupedWorksFromCache() : [];
 		if ($accountChanged) {
-			$this->lastUpdateOfChangedRecords = 0;
-			$this->lastUpdateOfAllRecords = 0;
+			$this->resetPerFeedCursors();
 		}
 		$ret = parent::update();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
 			if ($accountChanged) {
 				$this->wipeCacheForSettingsId();
-				$this->queueGroupedWorksForReindex($affectedGroupedWorks);
+				$this->forceCatalogReindex('unboundAccountNumber changed');
 			}
 		}
 		return $ret;
@@ -333,15 +318,13 @@ class SyndeticsSetting extends DataObject {
 	}
 
 	public function delete(bool $useWhere = false, bool $hardDelete = false) : bool|int {
-		$affectedGroupedWorks = (!$useWhere && !empty($this->id))
-			? $this->findGroupedWorksFromCache()
-			: [];
-		if (!$useWhere && !empty($this->id)) {
+		$hadBindings = !$useWhere && !empty($this->id);
+		if ($hadBindings) {
 			$this->clearLibraryBindings();
 		}
 		$ret = parent::delete($useWhere, $hardDelete);
-		if ($ret !== FALSE) {
-			$this->queueGroupedWorksForReindex($affectedGroupedWorks);
+		if ($ret !== FALSE && $hadBindings) {
+			$this->forceCatalogReindex('settings row deleted');
 		}
 		return $ret;
 	}
