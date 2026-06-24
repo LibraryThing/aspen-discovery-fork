@@ -260,6 +260,7 @@
 		<dynamicField name="su_review_text_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
 		<dynamicField name="su_review_source_*" type="unchanged_string" indexed="true" stored="false" multiValued="true" docValues="true"/>
 		<dynamicField name="su_review_date_*" type="date" indexed="true" stored="false" multiValued="true"/>
+		<dynamicField name="su_profile_*" type="searchable_text" indexed="true" stored="false" multiValued="true"/>
 		<!-- The popularity of a title in terms of circulation activity -->
 		<field name="popularity" type="integer" indexed="true" stored="false" default="0"/>
 		<field name="total_holds" type="integer" indexed="true" stored="false" default="0"/>
