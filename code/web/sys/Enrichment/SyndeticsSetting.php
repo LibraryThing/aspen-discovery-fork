@@ -10,10 +10,11 @@ class SyndeticsSetting extends DataObject {
 	public $unboundAccountNumber;
 	public $unboundInstanceNumber;
 	public $indexingEnabled;
-	public $lastSeenLtSeedVersion;
-	public $lastSeenLtSeedFetchedAt;
-	public $lastSeenLtLibraryVersion;
-	public $lastSeenLtLibraryFetchedAt;
+	public $syndeticsUnboundFeedToken;
+	public $lastSeenSuTagsSeedVersion;
+	public $lastSeenSuTagsSeedFetchedAt;
+	public $lastSeenSuTagsLibraryVersion;
+	public $lastSeenSuTagsLibraryFetchedAt;
 	public $classicEnrichmentCursor;
 	public $classicEnrichmentLastFullPassAt;
 	public $hasSummary;
@@ -152,9 +153,17 @@ class SyndeticsSetting extends DataObject {
 						'property' => 'indexingEnabled',
 						'type' => 'checkbox',
 						'label' => 'Index SU enrichment into Solr',
-						'description' => 'When enabled, the SU enrichment crons pull tag data from the LibraryThing feed and summary/TOC/review data from the classic Syndetics service for this account, and index both into the grouped works Solr core so SU enrichment becomes searchable for libraries on this subscription.',
+						'description' => 'When enabled, the SU enrichment crons pull tag data from the Syndetics Unbound tags feed and summary/TOC/review data from the classic Syndetics service for this account, and index both into the grouped works Solr core so SU enrichment becomes searchable for libraries on this subscription.',
 						'default' => 0,
 						'forcesReindex' => true,
+					],
+					'syndeticsUnboundFeedToken' => [
+						'property' => 'syndeticsUnboundFeedToken',
+						'type' => 'text',
+						'label' => 'Syndetics Unbound Feed Bearer Token',
+						'description' => 'Bearer token for the Syndetics Unbound tags feed. Obtain from your Syndetics Unbound provider; binds 1:1 to the Unbound Account Number above. Required when indexing is enabled.',
+						'maxLength' => 255,
+						'default' => '',
 					],
 				],
 			],
@@ -217,6 +226,10 @@ class SyndeticsSetting extends DataObject {
 			$this->setLastError("Unbound Account Number is required when 'Index SU enrichment into Solr' is enabled.");
 			return false;
 		}
+		if (empty($this->syndeticsUnboundFeedToken)) {
+			$this->setLastError("Syndetics Unbound Token is required when 'Index SU enrichment into Solr' is enabled.");
+			return false;
+		}
 		$duplicate = new SyndeticsSetting();
 		$duplicate->indexingEnabled = 1;
 		$duplicate->unboundAccountNumber = $this->unboundAccountNumber;
@@ -255,10 +268,10 @@ class SyndeticsSetting extends DataObject {
 	}
 
 	private function resetPerFeedCursors(): void {
-		$this->lastSeenLtSeedVersion = null;
-		$this->lastSeenLtSeedFetchedAt = null;
-		$this->lastSeenLtLibraryVersion = null;
-		$this->lastSeenLtLibraryFetchedAt = null;
+		$this->lastSeenSuTagsSeedVersion = null;
+		$this->lastSeenSuTagsSeedFetchedAt = null;
+		$this->lastSeenSuTagsLibraryVersion = null;
+		$this->lastSeenSuTagsLibraryFetchedAt = null;
 		$this->classicEnrichmentCursor = null;
 		$this->classicEnrichmentLastFullPassAt = null;
 	}

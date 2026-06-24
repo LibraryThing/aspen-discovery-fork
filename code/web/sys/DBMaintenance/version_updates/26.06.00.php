@@ -42,21 +42,23 @@ function getUpdates26_06_00(): array {
 		//other
 		'syndetics_indexing_v1' => [
 			'title' => 'Syndetics Unbound indexing schema',
-			'description' => 'Add indexing-related columns to syndetics_settings; create syndetics_indexing_data cache, and syndetics_indexing_log audit table. Multi-source feed model (LT tags + classic Syndetics).',
+			'description' => 'Add indexing-related columns to syndetics_settings; create syndetics_indexing_data cache, and syndetics_indexing_log audit table. Multi-source feed model (Syndetics Unbound tags + classic Syndetics).',
 			'continueOnError' => false,
 			'sql' => [
 				"ALTER TABLE syndetics_settings
 					ADD COLUMN indexingEnabled TINYINT(1) NOT NULL DEFAULT 0,
-					ADD COLUMN lastSeenLtSeedVersion INT(11) DEFAULT NULL,
-					ADD COLUMN lastSeenLtSeedFetchedAt BIGINT(20) DEFAULT NULL,
-					ADD COLUMN lastSeenLtLibraryVersion INT(11) DEFAULT NULL,
-					ADD COLUMN lastSeenLtLibraryFetchedAt BIGINT(20) DEFAULT NULL,
+					ADD COLUMN syndeticsUnboundFeedToken VARCHAR(255) DEFAULT NULL,
+					ADD COLUMN lastSeenSuTagsSeedVersion INT(11) DEFAULT NULL,
+					ADD COLUMN lastSeenSuTagsSeedFetchedAt BIGINT(20) DEFAULT NULL,
+					ADD COLUMN lastSeenSuTagsLibraryVersion INT(11) DEFAULT NULL,
+					ADD COLUMN lastSeenSuTagsLibraryFetchedAt BIGINT(20) DEFAULT NULL,
 					ADD COLUMN classicEnrichmentCursor BIGINT(20) DEFAULT NULL,
 					ADD COLUMN classicEnrichmentLastFullPassAt BIGINT(20) DEFAULT NULL",
 				"CREATE TABLE IF NOT EXISTS syndetics_indexing_data (
 					id BIGINT(20) NOT NULL AUTO_INCREMENT,
 					syndeticsSettingId INT(11) NOT NULL,
 					feedSource VARCHAR(20) NOT NULL,
+					suTagsFeedKind VARCHAR(10) DEFAULT NULL,
 					identifierType VARCHAR(10) NOT NULL,
 					identifier VARCHAR(20) NOT NULL,
 					workcode BIGINT(20) DEFAULT NULL,
