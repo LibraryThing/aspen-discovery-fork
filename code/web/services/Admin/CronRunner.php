@@ -21,6 +21,8 @@ class Admin_CronRunner extends Admin_Admin {
 			'sendCampaignEndingEmails' => 'Send Campaign Ending Emails',
 			'sendILSMessages' => 'Send ILS Messages',
 			'sendLiDANotifications' => 'Send LiDA Notifications',
+			'syndeticsClassicEnrichmentBackground' => 'Syndetics Unbound Classic Enrichment',
+			'syndeticsUnboundTagsBackground' => 'Syndetics Unbound Tags',
 			'talpaRecalculationCron' => 'Talpa Recalculation',
 			'talpaWorksCron' => 'Talpa Works',
 			'updateCommunityTranslations' => 'Update Community Translations',

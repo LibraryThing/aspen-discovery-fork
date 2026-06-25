@@ -343,11 +343,9 @@ class SyndeticsSetting extends DataObject {
 
 	public function delete(bool $useWhere = false, bool $hardDelete = false) : bool|int {
 		$hadBindings = !$useWhere && !empty($this->id);
-		if ($hadBindings) {
-			$this->clearLibraryBindings();
-		}
 		$ret = parent::delete($useWhere, $hardDelete);
 		if ($ret !== FALSE && $hadBindings) {
+			$this->clearLibraryBindings();
 			$this->forceCatalogReindex('settings row deleted');
 		}
 		return $ret;

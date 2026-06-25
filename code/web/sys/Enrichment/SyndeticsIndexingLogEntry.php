@@ -6,7 +6,7 @@ class SyndeticsIndexingLogEntry extends BaseLogEntry {
 	public $__table = 'syndetics_indexing_log';   // table name
 	public $id;
 	public $syndeticsSettingId;
-	public $feedSource;       // 'su_tags' | 'syndetics_classic'
+	public $feedSource;       // 'su_tags' | 'syndetics_classic' | 'cleanup'
 	public $notes;
 	public $numProducts;
 	public $numErrors;
