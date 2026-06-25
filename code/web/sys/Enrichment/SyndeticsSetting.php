@@ -159,10 +159,11 @@ class SyndeticsSetting extends DataObject {
 					],
 					'syndeticsUnboundFeedToken' => [
 						'property' => 'syndeticsUnboundFeedToken',
-						'type' => 'text',
+						'type' => 'storedPassword',
 						'label' => 'Syndetics Unbound Feed Bearer Token',
 						'description' => 'Bearer token for the Syndetics Unbound tags feed. Obtain from your Syndetics Unbound provider; binds 1:1 to the Unbound Account Number above. Required when indexing is enabled.',
 						'maxLength' => 255,
+						'hideInLists' => true,
 						'default' => '',
 					],
 				],
@@ -268,12 +269,24 @@ class SyndeticsSetting extends DataObject {
 	}
 
 	private function resetPerFeedCursors(): void {
+		global $aspen_db;
 		$this->lastSeenSuTagsSeedVersion = null;
 		$this->lastSeenSuTagsSeedFetchedAt = null;
 		$this->lastSeenSuTagsLibraryVersion = null;
 		$this->lastSeenSuTagsLibraryFetchedAt = null;
 		$this->classicEnrichmentCursor = null;
 		$this->classicEnrichmentLastFullPassAt = null;
+		// DataObject::update() skips null-valued properties, so parent::update() will NOT clear these in
+		// the DB. NULL them explicitly — otherwise stale version / fetched-at values survive an account
+		// change and the cron skips re-fetching the new account's feeds.
+		$stmt = $aspen_db->prepare(
+			"UPDATE syndetics_settings
+			 SET lastSeenSuTagsSeedVersion = NULL, lastSeenSuTagsSeedFetchedAt = NULL,
+				 lastSeenSuTagsLibraryVersion = NULL, lastSeenSuTagsLibraryFetchedAt = NULL,
+				 classicEnrichmentCursor = NULL, classicEnrichmentLastFullPassAt = NULL
+			 WHERE id = ?"
+		);
+		$stmt->execute([$this->id]);
 	}
 
 	/**
@@ -305,14 +318,12 @@ class SyndeticsSetting extends DataObject {
 			return false;
 		}
 		$accountChanged = $this->detectAccountNumberChange();
-		if ($accountChanged) {
-			$this->resetPerFeedCursors();
-		}
 		$ret = parent::update();
 		if ($ret !== FALSE) {
 			$this->saveLibraries();
 			if ($accountChanged) {
 				$this->wipeCacheForSettingsId();
+				$this->resetPerFeedCursors();
 				$this->forceCatalogReindex('unboundAccountNumber changed');
 			}
 		}
