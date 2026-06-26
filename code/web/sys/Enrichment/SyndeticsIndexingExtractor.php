@@ -8,8 +8,11 @@ require_once ROOT_DIR . '/sys/Enrichment/SyndeticsIndexingLogEntry.php';
  * (syndeticsUnboundTagsBackground.php and syndeticsClassicEnrichmentBackground.php).
  */
 class SyndeticsIndexingExtractor {
-	private const SU_TAGS_SEED_URL = 'https://www.librarything.com/api_su_feed_seed.php';
-	private const SU_TAGS_LIBRARY_URL = 'https://www.librarything.com/api_su_feed_library.php';
+	// TEMPORARY DEV ENDPOINTS — revert to the prod URLs below before pushing (tracked in the plan, Task 30).
+	// private const SU_TAGS_SEED_URL = 'https://www.librarything.com/api_su_feed_seed.php';
+	// private const SU_TAGS_LIBRARY_URL = 'https://www.librarything.com/api_su_feed_library.php';
+	private const SU_TAGS_SEED_URL = 'https://lp.dev.librarything.com/api_su_feed_seed.php';
+	private const SU_TAGS_LIBRARY_URL = 'https://lp.dev.librarything.com/api_su_feed_library.php';
 	private const SYNDETICS_BASE = 'https://syndetics.com/index.aspx';
 	private const CLASSIC_CHUNK_SIZE = 200;
 	private const SU_TAGS_LIBRARY_PROBE_MIN_INTERVAL_SECS = 86400;    // 24h — library feed regenerates ~biweekly
@@ -48,7 +51,7 @@ class SyndeticsIndexingExtractor {
 	 * failure (no response / non-2xx — caller should retry) from a definitive "no data" response (a 2xx HTML
 	 * "no data" page or non-XML body — the identifier has been checked, write the empty marker so backfill drains).
 	 */
-	private function fetchClassicXml(string $file, string $isbn, string $upc, string $clientKey, string $viewType = 'xw10', &$transientFailure = null): ?SimpleXMLElement {
+	protected function fetchClassicXml(string $file, string $isbn, string $upc, string $clientKey, string $viewType = 'xw10', &$transientFailure = null): ?SimpleXMLElement {
 		$transientFailure = false;
 		$requestUrl = self::SYNDETICS_BASE . "?isbn=$isbn/$file&client=$clientKey&type=$viewType&upc=$upc";
 		$ctx = stream_context_create([
@@ -97,7 +100,7 @@ class SyndeticsIndexingExtractor {
 		}
 	}
 
-	private function processSuTagsFeed(string $feedKind): void {
+	protected function processSuTagsFeed(string $feedKind): void {
 		$now = time();
 		$fetchedAtCol = $feedKind === 'seed' ? 'lastSeenSuTagsSeedFetchedAt' : 'lastSeenSuTagsLibraryFetchedAt';
 		$versionCol   = $feedKind === 'seed' ? 'lastSeenSuTagsSeedVersion'    : 'lastSeenSuTagsLibraryVersion';
@@ -126,7 +129,7 @@ class SyndeticsIndexingExtractor {
 	 * can be read back through compress.zlib://; otherwise accept + auto-inflate gzip and return the
 	 * (small) body — used for the ?meta=1 probe. Returns ['code','headers','body','error'].
 	 */
-	private function suTagsHttpGet(string $url, ?string $tmpFile): array {
+	protected function suTagsHttpGet(string $url, ?string $tmpFile): array {
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $url);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $this->settings->syndeticsUnboundFeedToken]);

@@ -194,7 +194,7 @@ class SyndeticsUnboundProcessor {
 	}
 
 	/** Merge container for in-flight processing of one scope's data. */
-	private static class MergedEnrichment {
+	static class MergedEnrichment {
 		String summary = "";
 		String toc = "";
 		Set<String> tags = new HashSet<>();           // su_tags index array
@@ -229,7 +229,7 @@ class SyndeticsUnboundProcessor {
 	}
 
 	/** Merges all cache rows for one scope (across both feedSources) into a single result. */
-	private MergedEnrichment mergeForScope(List<EnrichmentRow> rows) {
+	static MergedEnrichment mergeForScope(List<EnrichmentRow> rows) {
 		MergedEnrichment merged = new MergedEnrichment();
 		for (EnrichmentRow row : rows) {
 			if ("su_tags".equals(row.feedSource)) {
@@ -242,7 +242,7 @@ class SyndeticsUnboundProcessor {
 	}
 
 	/** SU tags payload: { "index": ["tag", ...], "facet": ["tag", ...] }. */
-	private void mergeSuTagsRow(MergedEnrichment merged, JSONObject payload) {
+	static void mergeSuTagsRow(MergedEnrichment merged, JSONObject payload) {
 		JSONArray indexArr = payload.optJSONArray("index");
 		if (indexArr != null) {
 			for (int i = 0; i < indexArr.length(); i++) {
@@ -264,7 +264,7 @@ class SyndeticsUnboundProcessor {
 	}
 
 	/** Classic Syndetics payload: { "summary": "...", "toc": [...], "profile": {...}, "reviews": [{...}] }. */
-	private void mergeClassicRow(MergedEnrichment merged, JSONObject payload) {
+	static void mergeClassicRow(MergedEnrichment merged, JSONObject payload) {
 		if (merged.summary.isEmpty()) {
 			merged.summary = payload.optString("summary", "");
 		}
@@ -303,7 +303,7 @@ class SyndeticsUnboundProcessor {
 	}
 
 	/** Flattens a fiction-profile payload into a set of searchable term strings. */
-	private void flattenProfile(JSONObject profile, Set<String> out) {
+	static void flattenProfile(JSONObject profile, Set<String> out) {
 		JSONArray characters = profile.optJSONArray("characters");
 		if (characters != null) {
 			for (int i = 0; i < characters.length(); i++) {
@@ -362,7 +362,7 @@ class SyndeticsUnboundProcessor {
 	// rejects the document, so su_review_date_* is only written for values matching this.
 	private static final Pattern SOLR_DATE = Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z");
 
-	private static boolean isSolrDate(String value) {
+	static boolean isSolrDate(String value) {
 		return value != null && SOLR_DATE.matcher(value).matches();
 	}
 
@@ -401,7 +401,7 @@ class SyndeticsUnboundProcessor {
 		}
 	}
 
-	private static class EnrichmentRow {
+	static class EnrichmentRow {
 		final String feedSource;
 		final JSONObject payload;
 

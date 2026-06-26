@@ -4344,6 +4344,25 @@ class User extends DataObject {
 			'View System Reports',
 			'View Indexing Logs',
 		]);
+		// Only surface the Syndetics Unbound indexing pages when SU enrichment is being indexed into Solr.
+		// Guarded because the indexingEnabled column may not exist yet on a code-deployed-before-migration site.
+		require_once ROOT_DIR . '/sys/Enrichment/SyndeticsSetting.php';
+		$syndeticsUnboundIndexing = new SyndeticsSetting();
+		$syndeticsUnboundIndexing->syndeticsUnbound = 1;
+		$syndeticsUnboundIndexing->indexingEnabled = 1;
+		$syndeticsUnboundIndexingActive = false;
+		try {
+			$syndeticsUnboundIndexingActive = $syndeticsUnboundIndexing->count() > 0;
+		} catch (Exception $e) {
+			//Syndetics Unbound indexing schema not present yet; leave the nav entries hidden.
+		}
+		if ($syndeticsUnboundIndexingActive) {
+			$sections['system_reports']->addAction(new AdminAction('Syndetics Unbound Indexing Dashboard', 'View per-feed indexing status for Syndetics Unbound.', '/SyndeticsUnbound/Dashboard'), 'Administer Third Party Enrichment API Keys');
+			$sections['system_reports']->addAction(new AdminAction('Syndetics Unbound Indexing Log', 'View the indexing log for Syndetics Unbound.', '/SyndeticsUnbound/IndexingLog'), [
+				'View System Reports',
+				'View Indexing Logs',
+			]);
+		}
 		$sections['system_reports']->addAction(new AdminAction('Collection Reports', 'View collection reports of records Aspen has processed.', '/Admin/CollectionReports'), ['View System Reports']);
 		$sections['system_reports']->addAction(new AdminAction('Cron Log', 'View Cron Log. The cron process handles periodic cleanup tasks and updates reading history for users.', '/Admin/CronLog'), 'View System Reports');
 		$sections['system_reports']->addAction(new AdminAction('Background Processes', 'View information about background processes that are being run.', '/Admin/BackgroundProcesses'), 'View System Reports');
@@ -4599,11 +4618,6 @@ class User extends DataObject {
 		$sections['third_party_enrichment']->addAction(new AdminAction('reCAPTCHA Settings', 'Define settings for using reCAPTCHA within Aspen Discovery.', '/Enrichment/RecaptchaSettings'), 'Administer Third Party Enrichment API Keys');
 		$sections['third_party_enrichment']->addAction(new AdminAction('Rosen LevelUP Settings', 'Define settings for allowing students and parents to register for Rosen LevelUP.', '/Rosen/RosenLevelUPSettings'), 'Administer Third Party Enrichment API Keys');
 		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Settings', 'Define settings for Syndetics integration.', '/Enrichment/SyndeticsSettings'), 'Administer Third Party Enrichment API Keys');
-		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Unbound Dashboard', 'View per-feed indexing status for Syndetics Unbound.', '/SyndeticsUnbound/Dashboard'), 'Administer Third Party Enrichment API Keys');
-		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Unbound Indexing Log', 'View the indexing log for Syndetics Unbound.', '/SyndeticsUnbound/IndexingLog'), [
-			'View System Reports',
-			'View Indexing Logs',
-		]);
 
 		if (array_key_exists('Talpa Search', $enabledModules)) {
 			$sections['third_party_enrichment']->addAction(new AdminAction('Talpa Search', 'Define connection information and settings for Talpa.', '/Talpa/TalpaSettings'), 'Administer Third Party Enrichment API Keys');

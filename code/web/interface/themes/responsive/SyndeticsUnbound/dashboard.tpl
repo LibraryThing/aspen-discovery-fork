@@ -1,6 +1,6 @@
 {strip}
 	<div id="main-content" class="col-md-12">
-		<h1>{translate text="Syndetics Unbound Dashboard" isAdminFacing=true}</h1>
+		<h1>{translate text="Syndetics Unbound Indexing Dashboard" isAdminFacing=true}</h1>
 
 		{if !empty($reloadMessage)}<div class="alert alert-success">{$reloadMessage}</div>{/if}
 		{if !empty($reloadError)}<div class="alert alert-danger">{$reloadError}</div>{/if}

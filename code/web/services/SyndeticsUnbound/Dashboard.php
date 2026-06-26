@@ -41,7 +41,7 @@ class SyndeticsUnbound_Dashboard extends Admin_Admin {
 		}
 		$interface->assign('settingsRows', $settingsRows);
 
-		$this->display('dashboard.tpl', 'Syndetics Unbound Dashboard');
+		$this->display('dashboard.tpl', 'Syndetics Unbound Indexing Dashboard');
 	}
 
 	private function latestLog(int $settingsId, string $feedSource): ?array {
@@ -88,8 +88,8 @@ class SyndeticsUnbound_Dashboard extends Admin_Admin {
 	function getBreadcrumbs(): array {
 		$breadcrumbs = [];
 		$breadcrumbs[] = new Breadcrumb('/Admin/Home', 'Administration Home');
-		$breadcrumbs[] = new Breadcrumb('/Admin/Home#third_party_enrichment', 'Syndetics Unbound');
-		$breadcrumbs[] = new Breadcrumb('', 'Dashboard');
+		$breadcrumbs[] = new Breadcrumb('/Admin/Home#system_reports', 'System Reports');
+		$breadcrumbs[] = new Breadcrumb('', 'Syndetics Unbound Indexing Dashboard');
 		return $breadcrumbs;
 	}
 
@@ -98,6 +98,6 @@ class SyndeticsUnbound_Dashboard extends Admin_Admin {
 	}
 
 	function getActiveAdminSection(): string {
-		return 'third_party_enrichment';
+		return 'system_reports';
 	}
 }

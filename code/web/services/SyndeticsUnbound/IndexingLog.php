@@ -37,13 +37,13 @@ class SyndeticsUnbound_IndexingLog extends Admin_IndexingLog {
 	function getBreadcrumbs(): array {
 		$breadcrumbs = [];
 		$breadcrumbs[] = new Breadcrumb('/Admin/Home', 'Administration Home');
-		$breadcrumbs[] = new Breadcrumb('/Admin/Home#third_party_enrichment', 'Syndetics Unbound');
-		$breadcrumbs[] = new Breadcrumb('', 'Indexing Log');
+		$breadcrumbs[] = new Breadcrumb('/Admin/Home#system_reports', 'System Reports');
+		$breadcrumbs[] = new Breadcrumb('', 'Syndetics Unbound Indexing Log');
 		return $breadcrumbs;
 	}
 
 	function getActiveAdminSection(): string {
-		return 'third_party_enrichment';
+		return 'system_reports';
 	}
 
 	function launch(): void {

@@ -74,7 +74,7 @@ class SyndeticsUnbound_ReloadRecord extends Admin_Admin {
 	function getBreadcrumbs(): array {
 		$breadcrumbs = [];
 		$breadcrumbs[] = new Breadcrumb('/Admin/Home', 'Administration Home');
-		$breadcrumbs[] = new Breadcrumb('/Admin/Home#third_party_enrichment', 'Syndetics Unbound');
+		$breadcrumbs[] = new Breadcrumb('/Admin/Home#system_reports', 'System Reports');
 		$breadcrumbs[] = new Breadcrumb('', 'Reload Single Record');
 		return $breadcrumbs;
 	}
@@ -84,6 +84,6 @@ class SyndeticsUnbound_ReloadRecord extends Admin_Admin {
 	}
 
 	function getActiveAdminSection(): string {
-		return 'third_party_enrichment';
+		return 'system_reports';
 	}
 }
