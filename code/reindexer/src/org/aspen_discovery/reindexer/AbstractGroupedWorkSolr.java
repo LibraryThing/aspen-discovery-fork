@@ -123,6 +123,8 @@ public abstract class AbstractGroupedWorkSolr implements DebugLogger {
 
 	//Store a list of scopes for the work
 	protected HashMap<String, ArrayList<ScopingInfo>> relatedScopes = new HashMap<>();
+	// Syndetics Unbound per-scope enrichment fields (su_*_<scopeName>); emitted into the Solr doc at build time.
+	private final HashMap<String, ArrayList<String>> syndeticsUnboundFields = new HashMap<>();
 
 	protected boolean debugEnabled = false;
 	protected long debugId = -1L;
@@ -733,6 +735,29 @@ public abstract class AbstractGroupedWorkSolr implements DebugLogger {
 
 	Set<String> getIsbns() {
 		return isbns.keySet();
+	}
+
+	Set<String> getScopeNames() {
+		return relatedScopes.keySet();
+	}
+
+	Set<String> getUpcs() {
+		return upcs.keySet();
+	}
+
+	void addSyndeticsUnboundField(String fieldName, String value) {
+		syndeticsUnboundFields.computeIfAbsent(fieldName, k -> new ArrayList<>()).add(value == null ? "" : value);
+	}
+
+	protected void addSyndeticsUnboundFieldsToDocument(SolrInputDocument doc) {
+		for (Map.Entry<String, ArrayList<String>> entry : syndeticsUnboundFields.entrySet()) {
+			ArrayList<String> values = entry.getValue();
+			if (values.size() == 1) {
+				doc.addField(entry.getKey(), values.get(0));
+			} else {
+				doc.addField(entry.getKey(), values);
+			}
+		}
 	}
 
 	void addIssns(Set<String> issns) {

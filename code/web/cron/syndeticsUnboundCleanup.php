@@ -117,6 +117,9 @@ $logEntry->notes .= "\nDeleted $deleted cache rows and flagged a nightly reindex
 $logEntry->endTime = time();
 $logEntry->update();
 
+// TODO(future): email the Syndetics Unbound admin contact when a purge completes (deleted tally + settings
+// row) so the destructive cleanup is not silent; pair it with a confirmation email when cleanup is first
+// triggered. Today the only surfaces are this log entry and, on revocation, the SU dashboard alert.
 if ($backgroundProcess !== null) {
 	$backgroundProcess->addNote("Purged $deleted Syndetics Unbound cache rows for settings $settingsId.");
 	$backgroundProcess->endProcess('Completed Syndetics Unbound cache cleanup.');

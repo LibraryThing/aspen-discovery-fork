@@ -378,6 +378,11 @@ public class GroupedWorkSolr2 extends AbstractGroupedWorkSolr implements Cloneab
 		}catch (Exception e){
 			logEntry.incErrors("Error adding scoped fields to grouped work " + id, e);
 		}
+		try{
+			addSyndeticsUnboundFieldsToDocument(doc);
+		}catch (Exception e){
+			logEntry.incErrors("Error adding Syndetics Unbound fields to grouped work " + id, e);
+		}
 
 		return doc;
 	}
