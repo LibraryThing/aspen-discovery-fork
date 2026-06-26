@@ -4599,6 +4599,11 @@ class User extends DataObject {
 		$sections['third_party_enrichment']->addAction(new AdminAction('reCAPTCHA Settings', 'Define settings for using reCAPTCHA within Aspen Discovery.', '/Enrichment/RecaptchaSettings'), 'Administer Third Party Enrichment API Keys');
 		$sections['third_party_enrichment']->addAction(new AdminAction('Rosen LevelUP Settings', 'Define settings for allowing students and parents to register for Rosen LevelUP.', '/Rosen/RosenLevelUPSettings'), 'Administer Third Party Enrichment API Keys');
 		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Settings', 'Define settings for Syndetics integration.', '/Enrichment/SyndeticsSettings'), 'Administer Third Party Enrichment API Keys');
+		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Unbound Dashboard', 'View per-feed indexing status for Syndetics Unbound.', '/SyndeticsUnbound/Dashboard'), 'Administer Third Party Enrichment API Keys');
+		$sections['third_party_enrichment']->addAction(new AdminAction('Syndetics Unbound Indexing Log', 'View the indexing log for Syndetics Unbound.', '/SyndeticsUnbound/IndexingLog'), [
+			'View System Reports',
+			'View Indexing Logs',
+		]);
 
 		if (array_key_exists('Talpa Search', $enabledModules)) {
 			$sections['third_party_enrichment']->addAction(new AdminAction('Talpa Search', 'Define connection information and settings for Talpa.', '/Talpa/TalpaSettings'), 'Administer Third Party Enrichment API Keys');

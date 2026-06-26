@@ -352,6 +352,18 @@ Keyword:
       - [onephrase, 75]
     - literary_form_full:
       - [onephrase, 75]
+    - su_summary:
+      - [and, 60]
+    - su_toc:
+      - [and, 50]
+    - su_tags:
+      - [onephrase, 300]
+      - [and, 50]
+    - su_review_text:
+      - [and, 60]
+    - su_profile:
+      - [onephrase, 75]
+      - [and, 10]
 
 KeywordProper:
   QueryFields:

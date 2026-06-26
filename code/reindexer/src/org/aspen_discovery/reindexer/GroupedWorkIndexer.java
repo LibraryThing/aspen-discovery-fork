@@ -54,6 +54,7 @@ public class GroupedWorkIndexer {
 	private HooplaProcessor hooplaProcessor;
 	private HooplaProcessor2 hooplaProcessor2;
 	private PalaceProjectProcessor palaceProjectProcessor;
+	private SyndeticsUnboundProcessor syndeticsUnboundProcessor;
 	private final HashMap<String, HashMap<String, String>> translationMaps = new HashMap<>();
 	private final HashMap<String, String> locationLabelsByCode = new HashMap<>();
 	private final HashMap<String, LexileTitle> lexileInformation = new HashMap<>();
@@ -542,6 +543,8 @@ public class GroupedWorkIndexer {
 		axis360Processor = new Axis360Processor(this, dbConn, logger);
 
 		palaceProjectProcessor = new PalaceProjectProcessor(this, dbConn, logger);
+
+		syndeticsUnboundProcessor = new SyndeticsUnboundProcessor(this, dbConn, logger);
 
 		//Check to see if we want to display Unknown and Not Coded Literary Forms.  This is done by looking
 		//at the indexing profiles since that is the least confusing place to put the settings.
@@ -1253,6 +1256,12 @@ public class GroupedWorkIndexer {
 			loadDisplayInfo(groupedWork);
 			//Update Series index data - this needs to happen after load display info in case the user has overridden the display
 			updateSeriesDataForWork(groupedWork);
+
+			//Decorate with Syndetics Unbound enrichment (per-scope su_* fields). Runs last so identifiers and
+			//scopes are final before the cache lookup and the Solr document build.
+			if (syndeticsUnboundProcessor != null) {
+				syndeticsUnboundProcessor.decorateGroupedWork(groupedWork);
+			}
 
 			//Write the record to Solr.
 			try {

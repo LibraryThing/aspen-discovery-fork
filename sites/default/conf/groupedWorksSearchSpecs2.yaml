@@ -336,6 +336,16 @@ Keyword:
       - [onephrase, 20]
     - description:
       - [onephrase, 15]
+    - su_summary:
+      - [onephrase, 15]
+    - su_toc:
+      - [onephrase, 20]
+    - su_tags:
+      - [onephrase, 800]
+    - su_review_text:
+      - [onephrase, 15]
+    - su_profile:
+      - [onephrase, 75]
     - keywords:
       - [onephrase, 10]
     - title_full:

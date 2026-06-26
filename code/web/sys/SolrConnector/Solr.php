@@ -602,7 +602,14 @@ abstract class Solr {
 				// push it onto the stack of clauses
 				$clauses[] = $searchString;
 			} else {
-				if ($solrScope) {
+				if (str_starts_with($field, 'su_')) {
+					// su_* are scope-only dynamic fields (su_*_<scope>); there is no bare su_* field, so skip
+					// them in unscoped/global searches (also keeps SU terms out of searches with no scope).
+					if (!$solrScope) {
+						continue;
+					}
+					$field .= '_' . $solrScope;
+				} elseif ($solrScope) {
 					if ($field == 'local_callnumber' || $field == 'local_callnumber_left' || $field == 'local_callnumber_exact') {
 						$field .= '_' . $solrScope;
 					}
