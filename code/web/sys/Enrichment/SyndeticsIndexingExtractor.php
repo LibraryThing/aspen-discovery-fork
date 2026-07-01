@@ -238,6 +238,7 @@ class SyndeticsIndexingExtractor {
 			// Preload checksums for this feed kind (drives checksum-skip + numAdded/numUpdated), and for the
 			// seed pass the set of library-owned identifiers (library-wins-on-collision; defensive no-op
 			// post-canonicalization).
+			$this->reconnectAspenDbIfDropped();
 			$this->loadSuTagsChecksumMap($feedKind);
 			$libraryIds = $feedKind === 'seed' ? $this->loadSuTagsLibraryIdentifierSet() : [];
 
@@ -332,6 +333,17 @@ class SyndeticsIndexingExtractor {
 		}
 		fclose($stream);
 		return $meta;
+	}
+
+	/** Re-establish $aspen_db if a long idle download left the connection severed (proxy/overlay drop, DB restart). */
+	private function reconnectAspenDbIfDropped(): void {
+		global $aspen_db;
+		try {
+			$aspen_db->query('SELECT 1');
+		} catch (PDOException $e) {
+			initDatabase();                       // rebuild with bootstrap's exact attributes (ERRMODE + utf8mb4)
+			$this->touchLastFetchedStmt = null;   // stale prepare; re-create on the new connection
+		}
 	}
 
 	/** Load (feedSource|identifierType|identifier) => rawChecksum for one su_tags feed kind. */

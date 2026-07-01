@@ -3,17 +3,17 @@
 		<h1>{translate text="Syndetics Unbound Indexing Log" isAdminFacing=true}</h1>
 
 		<form class="form-inline" method="get" action="/SyndeticsUnbound/IndexingLog">
-			<div class="form-group">
-				<label for="feedSource">{translate text="Feed" isAdminFacing=true}</label>
+			<div class="form-group" style="margin-right: 15px;">
+				<label for="feedSource" style="margin-right: 5px;">{translate text="Feed" isAdminFacing=true}</label>
 				<select id="feedSource" name="feedSource" class="form-control input-sm">
 					<option value=""{if $selectedFeedSource == ''} selected="selected"{/if}>{translate text="All feeds" isAdminFacing=true}</option>
-					<option value="su_tags"{if $selectedFeedSource == 'su_tags'} selected="selected"{/if}>{translate text="Syndetics Unbound tags" isAdminFacing=true}</option>
-					<option value="syndetics_classic"{if $selectedFeedSource == 'syndetics_classic'} selected="selected"{/if}>{translate text="Classic Syndetics" isAdminFacing=true}</option>
+					<option value="su_tags"{if $selectedFeedSource == 'su_tags'} selected="selected"{/if}>{translate text="Tags" isAdminFacing=true}</option>
+					<option value="syndetics_classic"{if $selectedFeedSource == 'syndetics_classic'} selected="selected"{/if}>{translate text="Enrichment" isAdminFacing=true}</option>
 					<option value="cleanup"{if $selectedFeedSource == 'cleanup'} selected="selected"{/if}>{translate text="Cleanup" isAdminFacing=true}</option>
 				</select>
 			</div>
-			<div class="form-group">
-				<label for="showErrorsOnly">{translate text="Show Errors Only" isAdminFacing=true}</label>
+			<div class="form-group" style="margin-right: 15px;">
+				<label for="showErrorsOnly" style="margin-right: 5px;">{translate text="Show Errors Only" isAdminFacing=true}</label>
 				<input type="checkbox" name="showErrorsOnly" id="showErrorsOnly" {if !empty($showErrorsOnly)}checked{/if}/>
 			</div>
 			<button class="btn btn-primary btn-sm" type="submit">{translate text="Apply" isAdminFacing=true}</button>
