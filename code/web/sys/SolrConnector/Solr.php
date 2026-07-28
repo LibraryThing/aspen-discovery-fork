@@ -603,12 +603,18 @@ abstract class Solr {
 				$clauses[] = $searchString;
 			} else {
 				if (str_starts_with($field, 'su_')) {
-					// su_* are scope-only dynamic fields (su_*_<scope>); there is no bare su_* field, so skip
-					// them in unscoped/global searches (also keeps SU terms out of searches with no scope).
-					if (!$solrScope) {
+					// su_* are scope-only dynamic fields (su_*_<scope>); there is no bare su_* field. With no
+					// resolved scope, fall back to the default library's scope when it's SU-enabled (so
+					// unscoped / consortial-level search still finds SU data); otherwise skip.
+					$suScope = $solrScope;
+					if (!$suScope) {
+						require_once ROOT_DIR . '/sys/Enrichment/SyndeticsSetting.php';
+						$suScope = SyndeticsSetting::getUnscopedFallbackScope();
+					}
+					if (!$suScope) {
 						continue;
 					}
-					$field .= '_' . $solrScope;
+					$field .= '_' . $suScope;
 				} elseif ($solrScope) {
 					if ($field == 'local_callnumber' || $field == 'local_callnumber_left' || $field == 'local_callnumber_exact') {
 						$field .= '_' . $solrScope;

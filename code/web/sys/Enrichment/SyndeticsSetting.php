@@ -210,6 +210,39 @@ class SyndeticsSetting extends DataObject {
 	}
 
 	/**
+	 * Fallback SU scope for searches that resolve no library ($solrScope === false). Returns the default
+	 * library's sanitized scope when that library is bound to an SU-enabled setting — so SU keyword search
+	 * still works at unscoped / consortial-level entry points — otherwise null. Memoized per request.
+	 */
+	static function getUnscopedFallbackScope(): ?string {
+		static $resolved = false;
+		static $fallbackScope = null;
+		if ($resolved) {
+			return $fallbackScope;
+		}
+		$resolved = true;
+
+		require_once ROOT_DIR . '/sys/LibraryLocation/Library.php';
+		$defaultLibrary = new Library();
+		$defaultLibrary->isDefault = 1;
+		if (!$defaultLibrary->find(true) || empty($defaultLibrary->syndeticsSettingId) || $defaultLibrary->syndeticsSettingId <= 0) {
+			return $fallbackScope;
+		}
+
+		$setting = new SyndeticsSetting();
+		$setting->id = $defaultLibrary->syndeticsSettingId;
+		if (!$setting->find(true) || empty($setting->indexingEnabled) || empty($setting->syndeticsUnbound)) {
+			return $fallbackScope;
+		}
+
+		$scope = preg_replace('/[^a-zA-Z0-9_]/', '', trim((string)$defaultLibrary->subdomain));
+		if ($scope !== '') {
+			$fallbackScope = $scope;
+		}
+		return $fallbackScope;
+	}
+
+	/**
 	 * When indexingEnabled = 1 is being saved, require a positive unboundAccountNumber
 	 * and reject saves whose account number is already in use by another indexed row.
 	 * a_id is the canonical per-library SU identifier; two settings rows must not both

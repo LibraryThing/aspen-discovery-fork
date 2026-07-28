@@ -337,15 +337,17 @@ Keyword:
     - description:
       - [onephrase, 15]
     - su_summary:
-      - [onephrase, 15]
+      - [and, 15]
     - su_toc:
-      - [onephrase, 20]
+      - [and, 20]
     - su_tags:
       - [onephrase, 800]
+      - [and, 200]
     - su_review_text:
-      - [onephrase, 15]
+      - [and, 15]
     - su_profile:
       - [onephrase, 75]
+      - [and, 10]
     - keywords:
       - [onephrase, 10]
     - title_full:

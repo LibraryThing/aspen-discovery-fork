@@ -15,7 +15,7 @@ class SyndeticsIndexingExtractor {
 	private const SU_TAGS_LIBRARY_URL = 'https://lp.dev.librarything.com/api_su_feed_library.php';
 	private const SYNDETICS_BASE = 'https://syndetics.com/index.aspx';
 	private const CLASSIC_CHUNK_SIZE = 200;
-	private const SU_TAGS_LIBRARY_PROBE_MIN_INTERVAL_SECS = 86400;    // 24h — library feed regenerates ~biweekly
+	private const SU_TAGS_LIBRARY_PROBE_MIN_INTERVAL_SECS = 259200;   // 3 days
 	private const SU_TAGS_SEED_PROBE_MIN_INTERVAL_SECS = 7776000;     // 90 days (~3 months) — seed regenerates ~6-monthly
 	private const CLASSIC_REQUEST_TIMEOUT_SECS = 10;
 	private const FULL_REFRESH_INTERVAL_SECS = 15552000;   // 6 months — classic full-refresh cadence
@@ -466,7 +466,6 @@ class SyndeticsIndexingExtractor {
 	 */
 	public function runClassicEnrichmentPass(): void {
 		$now = time();
-		$this->loadClassicChecksumMap();
 		$lastFullPass = (int)($this->settings->classicEnrichmentLastFullPassAt ?? 0);
 		$fullRefresh = ($lastFullPass === 0) || ($lastFullPass < $now - self::FULL_REFRESH_INTERVAL_SECS);
 
@@ -481,6 +480,9 @@ class SyndeticsIndexingExtractor {
 			return;
 		}
 
+		// Load the checksum map only after confirming there's work — a drained pass shouldn't pull the whole
+		// classic checksum set into memory for nothing.
+		$this->loadClassicChecksumMap();
 		$reindexIds = [];
 		foreach ($rows as $row) {
 			if ($this->processOneClassicIdentifier($row['identifierType'], $row['identifier'])) {
